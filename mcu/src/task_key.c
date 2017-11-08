@@ -17,104 +17,106 @@
  */
 
 #include "task_key.h"
+#include "rpc_transmission/client/generated_app/RPC_TRANSMISSION_mcu2qt.h"
 #include "task.h"
 
 #define HANDLELIST_SIZE 8
 
-//in 50ms
+// in 50ms
 #define KEYPRESS_LONG_THRESHOLD 20
 
 keyPressHandle_t keyHandleList[HANDLELIST_SIZE];
 
 unsigned int keyList[kid_KEYCOUNT];
 
-void keyInit(void){
-	int i;
-	for(i=0;i<HANDLELIST_SIZE;i++){
-		keyHandleList[i] = NULL;
-	}
-	for(i=0;i<kid_KEYCOUNT;i++){
-		keyList[i] = 0;
-	}
-
+void keyInit(void) {
+    int i;
+    for (i = 0; i < HANDLELIST_SIZE; i++) {
+        keyHandleList[i] = NULL;
+    }
+    for (i = 0; i < kid_KEYCOUNT; i++) {
+        keyList[i] = 0;
+    }
 }
 
-int findHandle(keyPressHandle_t h){
-	int result = -1;
-	int i;
-	for(i=0;i<HANDLELIST_SIZE;i++){
-		if (keyHandleList[i] == h){
-			result = i;
-			break;
-		}
-	}
-	return result;
+int findHandle(keyPressHandle_t h) {
+    int result = -1;
+    int i;
+    for (i = 0; i < HANDLELIST_SIZE; i++) {
+        if (keyHandleList[i] == h) {
+            result = i;
+            break;
+        }
+    }
+    return result;
 }
 
-//returns true if succesfull
-bool keyRegisterHandle(keyPressHandle_t h){
-	int i;
-	keyUnRegisterHandle(h);
-	i = findHandle(NULL);
-	if (i >= 0){
-		keyHandleList[i] = h;
-		return true;
-	}else{
-		return false;
-	}
+// returns true if succesfull
+bool keyRegisterHandle(keyPressHandle_t h) {
+    int i;
+    keyUnRegisterHandle(h);
+    i = findHandle(NULL);
+    if (i >= 0) {
+        keyHandleList[i] = h;
+        return true;
+    } else {
+        return false;
+    }
 }
 
-//returns true if successful
-bool keyUnRegisterHandle(keyPressHandle_t h){
-	int i = findHandle(h);
-	if (i<0){
-		return false;
-	}
-	while(i>=0){
-		keyHandleList[i] = NULL;
-		i = findHandle(h);
-	}
-	return true;
+// returns true if successful
+bool keyUnRegisterHandle(keyPressHandle_t h) {
+    int i = findHandle(h);
+    if (i < 0) {
+        return false;
+    }
+    while (i >= 0) {
+        keyHandleList[i] = NULL;
+        i = findHandle(h);
+    }
+    return true;
 }
 
-void fireEvent(key_event_t event, key_id_t keyID){
-	int i;
-	for(i=0;i<HANDLELIST_SIZE;i++){
-		if (keyHandleList[i] != NULL){
-			keyHandleList[i](event,keyID);
-		}
-	}
+void fireEvent(key_event_t event, key_id_t keyID) {
+    int i;
+    for (i = 0; i < HANDLELIST_SIZE; i++) {
+        if (keyHandleList[i] != NULL) {
+            keyHandleList[i](event, keyID);
+        }
+    }
 }
 
-void taskKey( void *pvParameters )
-{
-	int i;
-	for( ;; )
-	{
-		i++;
-		int keyID;
+void taskKey(void *pvParameters) {
+    int i;
+    for (;;) {
+        i++;
+        int keyID;
 
-		for(keyID = kid_none+1;keyID<kid_KEYCOUNT;keyID++){
-			if (boardTestKey(keyID)){
-				if (keyList[keyID] == 0){
-					fireEvent(ke_pressShort,keyID);
-				}
+        for (keyID = kid_none + 1; keyID < kid_KEYCOUNT; keyID++) {
+            if (boardTestKey(keyID)) {
+                if (keyList[keyID] == 0) {
+                    fireEvent(ke_pressShort, keyID);
+                }
 
-				if(keyList[keyID] < KEYPRESS_LONG_THRESHOLD+1)
-					keyList[keyID]++;
+                if (keyList[keyID] < KEYPRESS_LONG_THRESHOLD + 1)
+                    keyList[keyID]++;
 
-				if (keyList[keyID] == KEYPRESS_LONG_THRESHOLD){
-					fireEvent(ke_pressLong,keyID);
-				}
+                if (keyList[keyID] == KEYPRESS_LONG_THRESHOLD) {
+                    fireEvent(ke_pressLong, keyID);
+                }
 
-			}else{
-				if (keyList[keyID]){
-					fireEvent(ke_release,keyID);
-				}
-				keyList[keyID]=0;
-			}
-		}
-		vTaskDelay(( 50 / portTICK_RATE_MS ));
-
-	}
+            } else {
+                if (keyList[keyID]) {
+                    fireEvent(ke_release, keyID);
+                }
+                keyList[keyID] = 0;
+            }
+        }
+        vTaskDelay((50 / portTICK_RATE_MS));
+        static uint16_t counter = 0;
+        // printf("hallo %u\n", counter++);
+        // uint8_t state = HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_9);
+        // printf("pin %u\n", state);
+        // qtUpdateMCUADCValues(10, 12, 13, 14);
+    }
 }

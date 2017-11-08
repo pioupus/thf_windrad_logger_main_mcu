@@ -27,16 +27,27 @@
 
 #define FACTORY_TSCALIB_MD_BASE         ((uint32_t)0x1FF80078)    /*!< Calibration Data Bytes base address for medium density devices*/
 #define FACTORY_TSCALIB_MDP_BASE        ((uint32_t)0x1FF800F8)    /*!< Calibration Data Bytes base address for medium density plus devices*/
+#define FACTORY_TSCALIB_F407_VGT6        ((uint32_t)0x1FFF7A2A)    /*!< Calibration Data Bytes base address for medium density plus devices*/
 #define FACTORY_TSCALIB_MD_DATA         ((TSCALIB_TypeDef *) FACTORY_TSCALIB_MD_BASE)
 #define FACTORY_TSCALIB_MDP_DATA        ((TSCALIB_TypeDef *) FACTORY_TSCALIB_MDP_BASE)
+#define FACTORY_TSCALIB_F407_VGT6_DATA        ((TSCALIB_F407VGT6_TypeDef *) FACTORY_TSCALIB_F407_VGT6)
+
 #define TEST_CALIB_DIFF           		(int32_t) 50  /* difference of hot-cold calib
                                                data to be considered as valid */
 
 /*
 STM32L151RET6:
-VREFINT_CAL 	0x1FF8 00F8 - 0x1FF8 00F9 	Raw data acquired at temperature of 30 °C ±5 °C VDDA= 3 V ±10 mV
-TSCAL1 			0x1FF8 00FA - 0x1FF8 00FB	TS ADC raw data acquired at temperature of 30 °C ±5 °C VDDA= 3 V ±10 mV
-TSCAL2			0x1FF8 00FE - 0x1FF8 00FF	TS ADC raw data acquired at temperature of 110 °C ±5 °C VDDA= 3 V ±10 mV
+VREFINT_CAL 	0x1FF8 00F8 - 0x1FF8 00F9 	Raw data acquired at temperature of 30C ï¿½5 C VDDA= 3 V ï¿½10 mV
+TSCAL1 			0x1FF8 00FA - 0x1FF8 00FB	TS ADC raw data acquired at temperature of 30 ï¿½C ï¿½5 ï¿½C VDDA= 3 V ï¿½10 mV
+TSCAL2			0x1FF8 00FE - 0x1FF8 00FF	TS ADC raw data acquired at temperature of 110 ï¿½C ï¿½5 ï¿½C VDDA= 3 V ï¿½10 mV
+*/
+
+
+/*
+ * STM32F407VGT6:
+VREFIN_CAL Raw data acquired at temperature of 30 Â°C, VDDA=3.3 V 0x1FFF7A2A - 0x1FFF7A2B
+TS_CAL1 TS ADC raw data acquired at temperature of 30 Â°C, VDDA=3.3 V 0x1FFF7A2C - 0x1FFF7A2D
+TS_CAL2 TS ADC raw data acquired at temperature of 110 Â°C, VDDA=3.3 V 0x1FFF7A2E - 0x1FFF7A2F
 */
 typedef struct
 {
@@ -46,7 +57,21 @@ typedef struct
     uint16_t TS_CAL_2; // high temperature calibration data
 } TSCALIB_TypeDef;
 
-static TSCALIB_TypeDef adcCalibData;
+typedef struct
+{
+    uint16_t VREF;
+    uint16_t TS_CAL_1; // low temperature calibration data
+    uint16_t TS_CAL_2; // high temperature calibration data
+} TSCALIB_F407VGT6_TypeDef;
+
+typedef struct
+{
+    uint16_t VREF;
+    uint16_t TS_CAL_1; // low temperature calibration data
+    uint16_t TS_CAL_2; // high temperature calibration data
+} TSCALIB_t;
+
+static TSCALIB_t adcCalibData;
 static SemaphoreHandle_t semaphoreADCReady;
 
 uint32_t ubat_avgsum;
@@ -58,15 +83,43 @@ volatile adc_sequence_index_t adcSequenceIndex;
 
 
 
-void getFactoryTSCalibData(TSCALIB_TypeDef* data)
+void getFactoryTSCalibData(TSCALIB_t* data)
 {
 	uint32_t deviceID;
 
 	deviceID = HAL_GetDEVID();
 
-	if (deviceID == 0x427) *data = *FACTORY_TSCALIB_MDP_DATA;
-	else if (deviceID == 0x437) *data = *FACTORY_TSCALIB_MDP_DATA;
-	else if (deviceID == 0x416) *data = *FACTORY_TSCALIB_MD_DATA;
+	if (deviceID == 0x427){
+		TSCALIB_TypeDef data_;
+		data_ = *FACTORY_TSCALIB_MDP_DATA;
+		data->TS_CAL_1 = data_.TS_CAL_1;
+		data->TS_CAL_2 = data_.TS_CAL_2;
+		data->VREF = data_.VREF;
+	}
+	else if (deviceID == 0x437){
+		TSCALIB_TypeDef data_;
+		data_ = *FACTORY_TSCALIB_MDP_DATA;
+		data->TS_CAL_1 = data_.TS_CAL_1;
+		data->TS_CAL_2 = data_.TS_CAL_2;
+		data->VREF = data_.VREF;
+
+	}
+	else if (deviceID == 0x416){
+		TSCALIB_TypeDef data_;
+		data_ = *FACTORY_TSCALIB_MD_DATA;
+		data->TS_CAL_1 = data_.TS_CAL_1;
+		data->TS_CAL_2 = data_.TS_CAL_2;
+		data->VREF = data_.VREF;
+
+	}
+	else if (deviceID == 0x413){
+
+		TSCALIB_F407VGT6_TypeDef data_;
+		data_ = *FACTORY_TSCALIB_F407_VGT6_DATA;
+		data->TS_CAL_1 = data_.TS_CAL_1;
+		data->TS_CAL_2 = data_.TS_CAL_2;
+		data->VREF = data_.VREF;
+	}
 	else{
 		printf("Error loading ADC Calib Data\n");
 		assert(0);
@@ -78,7 +131,7 @@ ErrorStatus testFactoryCalibData(void)
 {
   int32_t testdiff;
   ErrorStatus retval = ERROR;
-  TSCALIB_TypeDef datatotest;
+  TSCALIB_t datatotest;
   getFactoryTSCalibData (&datatotest);
   testdiff = datatotest.TS_CAL_2 - datatotest.TS_CAL_1;
   if ( testdiff > TEST_CALIB_DIFF )    retval = SUCCESS;
@@ -106,14 +159,11 @@ void ADC_Config(void)
 
 
 	hadc.Instance = ADC1;
-	hadc.Init.ClockPrescaler = ADC_CLOCK_ASYNC_DIV1;
+	hadc.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV2;
 	hadc.Init.Resolution = ADC_RESOLUTION_12B;
 	hadc.Init.DataAlign = ADC_DATAALIGN_RIGHT;
-	hadc.Init.ScanConvMode = ADC_SCAN_ENABLE;
+	hadc.Init.ScanConvMode = DISABLE;
 	hadc.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
-	hadc.Init.LowPowerAutoWait = ADC_AUTOWAIT_UNTIL_DATA_READ;
-	hadc.Init.LowPowerAutoPowerOff = ADC_AUTOPOWEROFF_IDLE_DELAY_PHASES;
-	hadc.Init.ChannelsBank = ADC_CHANNELS_BANK_A;
 	hadc.Init.ContinuousConvMode = DISABLE;
 	hadc.Init.NbrOfConversion = adsi_max-1;
 	hadc.Init.DiscontinuousConvMode = DISABLE;
@@ -125,7 +175,7 @@ void ADC_Config(void)
 	for (int i = 0; i<adsi_max-1;i++ ){
 		sConfig.Channel = adcCHANNELS[i];
 		sConfig.Rank = i+1;
-		sConfig.SamplingTime = ADC_SAMPLETIME_192CYCLES;
+		sConfig.SamplingTime = ADC_SAMPLETIME_144CYCLES;
 		HAL_ADC_ConfigChannel(&hadc, &sConfig);
 	}
 

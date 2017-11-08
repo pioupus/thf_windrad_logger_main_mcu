@@ -16,8 +16,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#include "board.h"
 #include "task_rpc_serial_in.h"
+#include "board.h"
 
 #include "channel_codec/channel_codec.h"
 
@@ -30,47 +30,40 @@
 #define CHANNEL_CODEC_TX_BUFFER_SIZE 64
 #define CHANNEL_CODEC_RX_BUFFER_SIZE 64
 
-
 static char cc_rxBuffers[channel_codec_comport_COUNT][CHANNEL_CODEC_RX_BUFFER_SIZE];
 static char cc_txBuffers[channel_codec_comport_COUNT][CHANNEL_CODEC_TX_BUFFER_SIZE];
 
-
-void ChannelCodec_errorHandler(channel_codec_instance_t *instance, channelCodecErrorNum_t ErrNum){
-	(void)ErrNum;
-	(void)instance;
-
+void ChannelCodec_errorHandler(channel_codec_instance_t *instance, channelCodecErrorNum_t ErrNum) {
+    (void)ErrNum;
+    (void)instance;
 }
 
-
-
-RPC_RESULT phyPushDataBuffer(channel_codec_instance_t *instance,  const char *buffer, size_t length){
-	if (instance->aux.port == channel_codec_comport_transmission){
-		vSerialPutString(serCOM_DBG, buffer,  length);
-	}
-	return RPC_SUCCESS;
+RPC_RESULT phyPushDataBuffer(channel_codec_instance_t *instance, const char *buffer, size_t length) {
+    if (instance->aux.port == channel_codec_comport_transmission) {
+        vSerialPutString(serCOM_RPC, buffer, length);
+    }
+    return RPC_SUCCESS;
 }
 
 void taskRPCSerialIn(void *pvParameters) {
 
-	signed char  inByte;
+    signed char inByte;
 
+    cc_instances[channel_codec_comport_transmission].aux.port = channel_codec_comport_transmission;
 
-	cc_instances[channel_codec_comport_transmission].aux.port = channel_codec_comport_transmission;
+    channel_init_instance(&cc_instances[channel_codec_comport_transmission], cc_rxBuffers[channel_codec_comport_transmission],
+                          CHANNEL_CODEC_RX_BUFFER_SIZE, cc_txBuffers[channel_codec_comport_transmission], CHANNEL_CODEC_TX_BUFFER_SIZE);
 
-	channel_init_instance(&cc_instances[channel_codec_comport_transmission],
-									 cc_rxBuffers[channel_codec_comport_transmission],CHANNEL_CODEC_RX_BUFFER_SIZE,
-									 cc_txBuffers[channel_codec_comport_transmission],CHANNEL_CODEC_TX_BUFFER_SIZE);
-
-    for (int i = 0;i < taskHandleID_count; i++){
-    	if (i != taskHandleID_RPCSerialIn)
-    		vTaskResume(taskHandles[i]);
+    for (int i = 0; i < taskHandleID_count; i++) {
+        if (i != taskHandleID_RPCSerialIn)
+            vTaskResume(taskHandles[i]);
     }
 
-
-    vTaskDelay(( 50 / portTICK_RATE_MS ));
-	for (;;) {
-		if (xSerialGetChar( serCOM_DBG, &inByte, 100 / portTICK_RATE_MS ) == pdTRUE){
-			channel_push_byte_to_RPC(&cc_instances[channel_codec_comport_transmission],inByte);
-		}
-	}
+    xSerialPutChar(serCOM_RPC, 0x7A, 100);
+    vTaskDelay((50 / portTICK_RATE_MS));
+    for (;;) {
+        if (xSerialGetChar(serCOM_RPC, &inByte, 100 / portTICK_RATE_MS) == pdTRUE) {
+            channel_push_byte_to_RPC(&cc_instances[channel_codec_comport_transmission], inByte);
+        }
+    }
 }

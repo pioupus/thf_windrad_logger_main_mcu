@@ -2,8 +2,6 @@
 #ifndef INCLUDE_SERIAL_H_
 #define INCLUDE_SERIAL_H_
 
-
-
 /*
     FreeRTOS V8.1.2 - Copyright (C) 2014 Real Time Engineers Ltd.
     All rights reserved
@@ -68,68 +66,46 @@
 
     1 tab == 4 spaces!
 */
-
-
-typedef void * xComPortHandle;
-
-
-typedef enum
-{
-	serCOM_DBG,
-	serCOM2,
+typedef enum {
+    serCOM_DBG,
+    serCOM_RPC,
 } eCOMPort;
 
-typedef enum
-{
-	serNO_PARITY,
-	serODD_PARITY,
-	serEVEN_PARITY,
-	serMARK_PARITY,
-	serSPACE_PARITY
-} eParity;
+typedef eCOMPort xComPortHandle;
 
-typedef enum
-{
-	serSTOP_1,
-	serSTOP_2
-} eStopBits;
+typedef enum { serNO_PARITY, serODD_PARITY, serEVEN_PARITY, serMARK_PARITY, serSPACE_PARITY } eParity;
 
-typedef enum
-{
-	serBITS_5,
-	serBITS_6,
-	serBITS_7,
-	serBITS_8
-} eDataBits;
+typedef enum { serSTOP_1, serSTOP_2 } eStopBits;
 
-typedef enum
-{
-	ser50,
-	ser75,
-	ser110,
-	ser134,
-	ser150,
-	ser200,
-	ser300,
-	ser600,
-	ser1200,
-	ser1800,
-	ser2400,
-	ser4800,
-	ser9600,
-	ser19200,
-	ser38400,
-	ser57600,
-	ser115200
+typedef enum { serBITS_5, serBITS_6, serBITS_7, serBITS_8 } eDataBits;
+
+typedef enum {
+    ser50,
+    ser75,
+    ser110,
+    ser134,
+    ser150,
+    ser200,
+    ser300,
+    ser600,
+    ser1200,
+    ser1800,
+    ser2400,
+    ser4800,
+    ser9600,
+    ser19200,
+    ser38400,
+    ser57600,
+    ser115200
 } eBaud;
 
-xComPortHandle xSerialPortInitMinimal( unsigned long ulWantedBaud, unsigned portBASE_TYPE uxQueueLength );
-xComPortHandle xSerialPortInit( eCOMPort ePort, eBaud eWantedBaud, eParity eWantedParity, eDataBits eWantedDataBits, eStopBits eWantedStopBits, unsigned portBASE_TYPE uxBufferLength );
-void vSerialPutString( xComPortHandle pxPort, const char * pcString, unsigned short usStringLength );
-signed portBASE_TYPE xSerialGetChar( xComPortHandle pxPort, signed char *pcRxedChar, TickType_t xBlockTime );
-signed portBASE_TYPE xSerialPutChar( xComPortHandle pxPort, signed char cOutChar, TickType_t xBlockTime );
+void xSerialPortInitMinimal(eCOMPort ePort, unsigned long ulWantedBaud, unsigned portBASE_TYPE uxQueueLength);
+
+void vSerialPutString(eCOMPort pxPort, const char *pcString, unsigned short usStringLength);
+signed portBASE_TYPE xSerialGetChar(eCOMPort pxPort, signed char *pcRxedChar, TickType_t xBlockTime);
+signed portBASE_TYPE xSerialPutChar(eCOMPort pxPort, signed char cOutChar, TickType_t xBlockTime);
 void serialSetRTOSRunningFlag(bool rtosRunningFlag);
-portBASE_TYPE xSerialWaitForSemaphore( xComPortHandle xPort );
-void vSerialClose( xComPortHandle xPort );
+
+void vSerialClose(eCOMPort xPort);
 
 #endif

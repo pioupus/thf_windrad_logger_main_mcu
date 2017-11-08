@@ -68,251 +68,255 @@
 */
 
 /*
-	BASIC INTERRUPT DRIVEN SERIAL PORT DRIVER FOR UART0.
-	
-	***Note*** This example uses queues to send each character into an interrupt
-	service routine and out of an interrupt service routine individually.  This
-	is done to demonstrate queues being used in an interrupt, and to deliberately
-	load the system to test the FreeRTOS port.  It is *NOT* meant to be an 
-	example of an efficient implementation.  An efficient implementation should
-	use FIFO's or DMA if available, and only use FreeRTOS API functions when 
-	enough has been received to warrant a task being unblocked to process the
-	data.
+        BASIC INTERRUPT DRIVEN SERIAL PORT DRIVER FOR UART0.
+
+        ***Note*** This example uses queues to send each character into an interrupt
+        service routine and out of an interrupt service routine individually.  This
+        is done to demonstrate queues being used in an interrupt, and to deliberately
+        load the system to test the FreeRTOS port.  It is *NOT* meant to be an
+        example of an efficient implementation.  An efficient implementation should
+        use FIFO's or DMA if available, and only use FreeRTOS API functions when
+        enough has been received to warrant a task being unblocked to process the
+        data.
 */
 
 /* Scheduler includes. */
 #include "FreeRTOS.h"
-#include "queue.h"
-#include "semphr.h"
 #include "board.h"
 #include "main.h"
+#include "queue.h"
+#include "semphr.h"
 
 /* Library includes. */
-
 
 /* Demo application includes. */
 #include "serial.h"
 /*-----------------------------------------------------------*/
 
 /* Misc defines. */
-#define serINVALID_QUEUE				( ( QueueHandle_t ) 0 )
-#define serNO_BLOCK						( ( TickType_t ) 0 )
+#define serINVALID_QUEUE ((QueueHandle_t)0)
+#define serNO_BLOCK ((TickType_t)0)
 
 /*-----------------------------------------------------------*/
 
 static bool RTOSRunningFlag = false;
 /* The queue used to hold received characters. */
-static QueueHandle_t xRxedChars;
-static QueueHandle_t xCharsForTx;
-#if 0
-/**
-  * @brief  Configures COM port.
-  * @param  COM: Specifies the COM port to be configured.
-  *   This parameter can be one of following parameters:
-  *     @arg COM1
-  * @param  USART_InitStruct: pointer to a USART_InitTypeDef structure that
-  *   contains the configuration information for the specified USART peripheral.
-  * @retval None
-  */
-void STM_EVAL_COMInit( USART_InitTypeDef* USART_InitStruct)
-{
-  //GPIO_InitTypeDef GPIO_InitStructure;
+static QueueHandle_t xRxedChars_dbg;
+static QueueHandle_t xCharsForTx_dbg;
 
-  /* Enable GPIO clock */
-  //RCC_AHBPeriphClockCmd(COM_TX_PORT_CLK[COM] | COM_RX_PORT_CLK[COM], ENABLE);
-
-  /* Enable USART clock */
-  RCC_APB2PeriphClockCmd(COM_DBG_CLK, ENABLE);
-  RCC_APB2PeriphClockLPModeCmd(COM_DBG_CLK, ENABLE);
-
-
-  /* USART configuration */
-  USART_Init(COM_DBG_BASE, USART_InitStruct);
-
-  /* Enable USART */
-  USART_Cmd(COM_DBG_BASE, ENABLE);
-}
-#endif
+static QueueHandle_t xRxedChars_rpc;
+static QueueHandle_t xCharsForTx_rpc;
 
 /*-----------------------------------------------------------*/
 
 /*
  * See the serial2.h header file.
  */
-xComPortHandle xSerialPortInitMinimal( unsigned long ulWantedBaud, unsigned portBASE_TYPE uxQueueLength )
-{
+void xSerialPortInitMinimal(eCOMPort pxPort, unsigned long ulWantedBaud, unsigned portBASE_TYPE uxQueueLength) {
 
-	xComPortHandle xReturn;
+    if (pxPort == serCOM_DBG) {
+        /* Create the queues used to hold Rx/Tx characters. */
+        xRxedChars_dbg = xQueueCreate(uxQueueLength, (unsigned portBASE_TYPE)sizeof(signed char));
+        xCharsForTx_dbg = xQueueCreate(uxQueueLength + 1, (unsigned portBASE_TYPE)sizeof(signed char));
 
+        /* If the queues were created correctly then setup the serial port
+        hardware. */
+        if ((xRxedChars_dbg != serINVALID_QUEUE) && (xCharsForTx_dbg != serINVALID_QUEUE)) {
 
-	/* Create the queues used to hold Rx/Tx characters. */
-	xRxedChars = xQueueCreate( uxQueueLength, ( unsigned portBASE_TYPE ) sizeof( signed char ) );
-	xCharsForTx = xQueueCreate( uxQueueLength + 1, ( unsigned portBASE_TYPE ) sizeof( signed char ) );
+            husart2.Instance = COM_DBG_BASE;
+            husart2.Init.BaudRate = ulWantedBaud;
+            husart2.Init.WordLength = USART_WORDLENGTH_8B;
+            husart2.Init.StopBits = USART_STOPBITS_1;
+            husart2.Init.Parity = USART_PARITY_NONE;
+            husart2.Init.Mode = USART_MODE_TX;
+            // husart2.Init.HwFlowCtl = USART_HWCONTROL_NONE;
+            // husart2.Init.OverSampling = USART_OVERSAMPLING_8;
 
-	/* If the queues were created correctly then setup the serial port
-	hardware. */
-	if( ( xRxedChars != serINVALID_QUEUE ) && ( xCharsForTx != serINVALID_QUEUE ) )
-	{
+            HAL_USART_Init(&husart2);
+            CLEAR_BIT(husart2.Instance->CR2, USART_CR2_CLKEN);
+        }
+    } else if (pxPort == serCOM_RPC) {
+        /* Create the queues used to hold Rx/Tx characters. */
+        xRxedChars_rpc = xQueueCreate(uxQueueLength, (unsigned portBASE_TYPE)sizeof(signed char));
+        xCharsForTx_rpc = xQueueCreate(uxQueueLength + 1, (unsigned portBASE_TYPE)sizeof(signed char));
 
+        /* If the queues were created correctly then setup the serial port
+        hardware. */
+        if ((xRxedChars_rpc != serINVALID_QUEUE) && (xCharsForTx_rpc != serINVALID_QUEUE)) {
 
+            husart3.Instance = COM_RPC_BASE;
+            husart3.Init.BaudRate = ulWantedBaud;
+            husart3.Init.WordLength = USART_WORDLENGTH_8B;
+            husart3.Init.StopBits = USART_STOPBITS_1;
+            husart3.Init.Parity = USART_PARITY_NONE;
+            husart3.Init.Mode = USART_MODE_TX_RX;
+            husart3.Init.CLKPolarity = USART_POLARITY_LOW;
+            husart3.Init.CLKPhase = USART_PHASE_1EDGE;
+            husart3.Init.CLKLastBit = USART_MODE_TX_RX;
 
-		huart1.Instance = COM_DBG_BASE;
-		huart1.Init.BaudRate = ulWantedBaud;
-		huart1.Init.WordLength = UART_WORDLENGTH_8B;
-		huart1.Init.StopBits = UART_STOPBITS_1;
-		huart1.Init.Parity = UART_PARITY_NONE;
-		huart1.Init.Mode = UART_MODE_TX_RX;
-		huart1.Init.HwFlowCtl = UART_HWCONTROL_NONE;
-		huart1.Init.OverSampling = UART_OVERSAMPLING_8;
-
-		HAL_UART_Init(&huart1);
-
-	}
-	else
-	{
-		xReturn = ( xComPortHandle ) 0;
-	}
-
-	/* This demo file only supports a single port but we have to return
-	something to comply with the standard demo header file. */
-	return xReturn;
+            HAL_USART_Init(&husart3);
+            CLEAR_BIT(husart3.Instance->CR2, USART_CR2_CLKEN);
+        }
+        /* This demo file only supports a single port but we have to return
+        something to comply with the standard demo header file. */
+    }
 }
 /*-----------------------------------------------------------*/
 
-signed portBASE_TYPE xSerialGetChar( xComPortHandle pxPort, signed char *pcRxedChar, TickType_t xBlockTime )
-{
-	/* The port handle is not required as this driver only supports one port. */
-	( void ) pxPort;
-
-	/* Get the next character from the buffer.  Return false if no characters
-	are available, or arrive before xBlockTime expires. */
-	if( xQueueReceive( xRxedChars, pcRxedChar, xBlockTime ) )
-	{
-		return pdTRUE;
-	}
-	else
-	{
-		return pdFALSE;
-	}
+signed portBASE_TYPE xSerialGetChar(eCOMPort pxPort, signed char *pcRxedChar, TickType_t xBlockTime) {
+    if (pxPort == serCOM_DBG) {
+        /* Get the next character from the buffer.  Return false if no characters
+        are available, or arrive before xBlockTime expires. */
+        if (xQueueReceive(xRxedChars_dbg, pcRxedChar, xBlockTime)) {
+            return pdTRUE;
+        } else {
+            return pdFALSE;
+        }
+    } else if (pxPort == serCOM_RPC) {
+        /* Get the next character from the buffer.  Return false if no characters
+        are available, or arrive before xBlockTime expires. */
+        if (xQueueReceive(xRxedChars_rpc, pcRxedChar, xBlockTime)) {
+            return pdTRUE;
+        } else {
+            return pdFALSE;
+        }
+    }
+    return pdFALSE;
 }
 /*-----------------------------------------------------------*/
-void serialSetRTOSRunningFlag(bool rtosRunningFlag){
-	RTOSRunningFlag = rtosRunningFlag;
+void serialSetRTOSRunningFlag(bool rtosRunningFlag) {
+    RTOSRunningFlag = rtosRunningFlag;
 }
 
-void vSerialPutString( xComPortHandle pxPort, const char * pcString, unsigned short usStringLength )
-{
-signed char *pxNext;
+void vSerialPutString(eCOMPort pxPort, const char *pcString, unsigned short usStringLength) {
+    signed char *pxNext;
 
-	/* A couple of parameters that this port does not use. */
-	( void ) usStringLength;
-	( void ) pxPort;
-
-	/* NOTE: This implementation does not handle the queue being full as no
-	block time is used! */
-
-	/* The port handle is not required as this driver only supports UART1. */
-	( void ) pxPort;
-
-	/* Send each character in the string, one at a time. */
-	pxNext = ( signed char * ) pcString;
-	for(int i=0;i<usStringLength;i++){
-		xSerialPutChar( pxPort, *pxNext, serNO_BLOCK );
-		pxNext++;
-	}
-
+    /* Send each character in the string, one at a time. */
+    pxNext = (signed char *)pcString;
+    for (int i = 0; i < usStringLength; i++) {
+        xSerialPutChar(pxPort, *pxNext, serNO_BLOCK);
+        pxNext++;
+    }
 }
 /*-----------------------------------------------------------*/
 
-void xSerialPutCharPolling( xComPortHandle pxPort, signed char cOutChar ){
-
-	HAL_UART_Transmit(&huart1, (uint8_t*)&cOutChar, 1, HAL_MAX_DELAY);
-
+void xSerialPutCharPolling(eCOMPort pxPort, signed char cOutChar) {
+    if (pxPort == serCOM_DBG) {
+        HAL_USART_Transmit(&husart2, (uint8_t *)&cOutChar, 1, HAL_MAX_DELAY);
+    } else if (pxPort == serCOM_RPC) {
+        HAL_USART_Transmit(&husart3, (uint8_t *)&cOutChar, 1, HAL_MAX_DELAY);
+    }
 }
 
-signed portBASE_TYPE xSerialPutChar( xComPortHandle pxPort, signed char cOutChar, TickType_t xBlockTime )
-{
-	signed portBASE_TYPE xReturn;
+signed portBASE_TYPE xSerialPutChar(eCOMPort pxPort, signed char cOutChar, TickType_t xBlockTime) {
+    signed portBASE_TYPE xReturn;
 
-	if(RTOSRunningFlag){
-		if( xQueueSend( xCharsForTx, &cOutChar, xBlockTime ) == pdPASS )
-		{
-			xReturn = pdPASS;
-			__HAL_UART_ENABLE_IT(&huart1, UART_IT_TXE);
+    if (RTOSRunningFlag) {
+        if (pxPort == serCOM_DBG) {
+            if (xQueueSend(xCharsForTx_dbg, &cOutChar, xBlockTime) == pdPASS) {
+                xReturn = pdPASS;
+                __HAL_USART_ENABLE_IT(&husart2, USART_IT_TXE);
 
-		}
-		else
-		{
-			xReturn = pdFAIL;
-		}
+            } else {
+                xReturn = pdFAIL;
+            }
+        } else if (pxPort == serCOM_RPC) {
+            if (xQueueSend(xCharsForTx_rpc, &cOutChar, xBlockTime) == pdPASS) {
+                xReturn = pdPASS;
+                __HAL_USART_ENABLE_IT(&husart3, USART_IT_TXE);
 
-	}else{
-		xSerialPutCharPolling(pxPort, cOutChar);
-		xReturn = pdPASS;
-	}
+            } else {
+                xReturn = pdFAIL;
+            }
+        }
 
+    } else {
+        xSerialPutCharPolling(pxPort, cOutChar);
+        xReturn = pdPASS;
+    }
 
-
-	return xReturn;
+    return xReturn;
 }
 /*-----------------------------------------------------------*/
 
-void vSerialClose( xComPortHandle xPort )
-{
-	/* Not supported as not required by the demo application. */
+void vSerialClose(eCOMPort xPort) { /* Not supported as not required by the demo application. */
 }
 /*-----------------------------------------------------------*/
 
-void USART1_IRQHandler( void )
-{
-	uint32_t tmp_flag = 0, tmp_it_source = 0;
-	portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
-	char cChar;
+void USART2_IRQHandler(void) {
+    uint32_t tmp_flag = 0, tmp_it_source = 0;
+    portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
+    char cChar;
 
-	tmp_flag = __HAL_UART_GET_FLAG(&huart1, UART_FLAG_TXE);
-	tmp_it_source = __HAL_UART_GET_IT_SOURCE(&huart1, UART_IT_TXE);
-	/* UART parity error interrupt occurred ------------------------------------*/
-	if((tmp_flag != RESET) && (tmp_it_source != RESET))
-	{
-		/* The interrupt was caused by the TX register becoming empty.  Are
-				there any more characters to transmit? */
-		if( xQueueReceiveFromISR( xCharsForTx, &cChar, &xHigherPriorityTaskWoken ) == pdTRUE )
-		{
-			/* A character was retrieved from the queue so can be sent to the
-					USART now. */
-			huart1.Instance->DR = cChar;
-		}
-		else
-		{
-			__HAL_UART_DISABLE_IT(&huart1, UART_IT_TXE);
-		}
-	}
+    tmp_flag = __HAL_USART_GET_FLAG(&husart2, USART_FLAG_TXE);
+    tmp_it_source = __HAL_USART_GET_IT_SOURCE(&husart2, USART_IT_TXE);
+    /* UART parity error interrupt occurred ------------------------------------*/
+    if ((tmp_flag != RESET) && (tmp_it_source != RESET)) {
+        /* The interrupt was caused by the TX register becoming empty.  Are
+                        there any more characters to transmit? */
+        if (xQueueReceiveFromISR(xCharsForTx_dbg, &cChar, &xHigherPriorityTaskWoken) == pdTRUE) {
+            /* A character was retrieved from the queue so can be sent to the
+                            USART now. */
+            husart2.Instance->DR = cChar;
+        } else {
+            __HAL_USART_DISABLE_IT(&husart2, USART_IT_TXE);
+        }
+    }
 
+    tmp_flag = __HAL_USART_GET_FLAG(&husart2, USART_FLAG_RXNE);
+    tmp_it_source = __HAL_USART_GET_IT_SOURCE(&husart2, USART_IT_RXNE);
+    /* UART in mode Receiver ---------------------------------------------------*/
+    if ((tmp_flag != RESET) && (tmp_it_source != RESET)) {
+        /* A character has been received on the USART, send it to the Rx
+        handler task. */
+        cChar = husart2.Instance->DR;
+        xQueueSendFromISR(xRxedChars_dbg, &cChar, &xHigherPriorityTaskWoken);
+    }
 
-	tmp_flag = __HAL_UART_GET_FLAG(&huart1, UART_FLAG_RXNE);
-	tmp_it_source = __HAL_UART_GET_IT_SOURCE(&huart1, UART_IT_RXNE);
-	/* UART in mode Receiver ---------------------------------------------------*/
-	if((tmp_flag != RESET) && (tmp_it_source != RESET))
-	{
-		/* A character has been received on the USART, send it to the Rx
-		handler task. */
-		cChar = huart1.Instance->DR;
-		xQueueSendFromISR( xRxedChars, &cChar, &xHigherPriorityTaskWoken );
-	}
-
-
-
-	/* If sending or receiving from a queue has caused a task to unblock, and
-	the unblocked task has a priority equal to or higher than the currently 
-	running task (the task this ISR interrupted), then xHigherPriorityTaskWoken 
-	will have automatically been set to pdTRUE within the queue send or receive 
-	function.  portEND_SWITCHING_ISR() will then ensure that this ISR returns 
-	directly to the higher priority unblocked task. */
-	portEND_SWITCHING_ISR( xHigherPriorityTaskWoken );
+    /* If sending or receiving from a queue has caused a task to unblock, and
+    the unblocked task has a priority equal to or higher than the currently
+    running task (the task this ISR interrupted), then xHigherPriorityTaskWoken
+    will have automatically been set to pdTRUE within the queue send or receive
+    function.  portEND_SWITCHING_ISR() will then ensure that this ISR returns
+    directly to the higher priority unblocked task. */
+    portEND_SWITCHING_ISR(xHigherPriorityTaskWoken);
 }
 
+void USART3_IRQHandler(void) {
+    uint32_t tmp_flag = 0, tmp_it_source = 0;
+    portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
+    char cChar;
 
+    tmp_flag = __HAL_USART_GET_FLAG(&husart3, USART_FLAG_TXE);
+    tmp_it_source = __HAL_USART_GET_IT_SOURCE(&husart3, USART_IT_TXE);
+    /* UART parity error interrupt occurred ------------------------------------*/
+    if ((tmp_flag != RESET) && (tmp_it_source != RESET)) {
+        /* The interrupt was caused by the TX register becoming empty.  Are
+                        there any more characters to transmit? */
+        if (xQueueReceiveFromISR(xCharsForTx_rpc, &cChar, &xHigherPriorityTaskWoken) == pdTRUE) {
+            /* A character was retrieved from the queue so can be sent to the
+                            USART now. */
+            husart3.Instance->DR = cChar;
+        } else {
+            __HAL_USART_DISABLE_IT(&husart3, USART_IT_TXE);
+        }
+    }
 
+    tmp_flag = __HAL_USART_GET_FLAG(&husart3, USART_FLAG_RXNE);
+    tmp_it_source = __HAL_USART_GET_IT_SOURCE(&husart3, USART_IT_RXNE);
+    /* UART in mode Receiver ---------------------------------------------------*/
+    if ((tmp_flag != RESET) && (tmp_it_source != RESET)) {
+        /* A character has been received on the USART, send it to the Rx
+        handler task. */
+        cChar = husart3.Instance->DR;
+        xQueueSendFromISR(xRxedChars_rpc, &cChar, &xHigherPriorityTaskWoken);
+    }
 
-
-	
+    /* If sending or receiving from a queue has caused a task to unblock, and
+    the unblocked task has a priority equal to or higher than the currently
+    running task (the task this ISR interrupted), then xHigherPriorityTaskWoken
+    will have automatically been set to pdTRUE within the queue send or receive
+    function.  portEND_SWITCHING_ISR() will then ensure that this ISR returns
+    directly to the higher priority unblocked task. */
+    portEND_SWITCHING_ISR(xHigherPriorityTaskWoken);
+}

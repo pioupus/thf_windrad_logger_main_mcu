@@ -24,5 +24,5 @@
 typedef enum{adsi_none,adsi_ref,adsi_temperature, adsi_adc1,adsi_adc2,adsi_max} adc_sequence_index_t;
 
 void taskADC(void *pvParameters) ;
-
+void ADC1_IRQHandler(void);
 #endif /* MCU_INCLUDE_TASK_ADC_H_ */

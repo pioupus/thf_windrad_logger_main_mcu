@@ -5,23 +5,23 @@
 OPT = 0
 
 
-MCU = STM32L151xE
+MCU = STM32F407xx
 
 
-HSE_VALUE=12000000
+HSE_VALUE=8000000
 
 SILENCE = @
 
-TARGETNAME = rpcFreeRTOSTemplate
+TARGETNAME = thf_windradlogger_main_mcu
 
 SRC = src
 # Libraries
 LIBRARIES = $(SRC)/libraries
 
-CMSIS = $(LIBRARIES)/STM32Cube_FW_L1_V1.5.0/Drivers/CMSIS
-HAL_DRIVER = $(LIBRARIES)/STM32Cube_FW_L1_V1.5.0/Drivers/STM32L1xx_HAL_Driver/
+CMSIS = $(LIBRARIES)/STM32Cube_FW_F4_V1.16.0/Drivers/CMSIS
+HAL_DRIVER = $(LIBRARIES)/STM32Cube_FW_F4_V1.16.0/Drivers/STM32F4xx_HAL_Driver
 
-FREERTOSDIR = $(LIBRARIES)/FreeRTOSV8.2.1
+FREERTOSDIR = $(LIBRARIES)/FreeRTOSv9.0.0
 
 
 # Define all C source files (dependencies are generated automatically)
@@ -37,16 +37,16 @@ SOURCES += $(SRC)/task_rpc_serial_in.c
 SOURCES += $(SRC)/syscalls.c
 SOURCES += $(LIBRARIES)/serial.c
 SOURCES += $(SRC)/chip_init.c
-SOURCES += $(SRC)/stm32l1xx_it.c
-SOURCES += $(SRC)/stm32l1xx_hal_msp.c
-SOURCES += $(SRC)/stm32l1xx_hal_timebase_TIM.c
+SOURCES += $(SRC)/stm32f4xx_it.c
+SOURCES += $(SRC)/stm32f4xx_hal_msp.c
+SOURCES += $(SRC)/stm32f4xx_hal_timebase_TIM.c
 #SOURCES += $(SRC)/lowpower.c
 
 
 
 
-SOURCES += $(CMSIS)/Device/ST/STM32L1xx/Source/Templates/gcc/startup_stm32l151xe.s
-SOURCES += $(CMSIS)/Device/ST/STM32L1xx/Source/Templates/system_stm32l1xx.c
+SOURCES += $(CMSIS)/Device/ST/STM32F4xx/Source/Templates/gcc/startup_stm32f407xx.s
+SOURCES += $(CMSIS)/Device/ST/STM32F4xx/Source/Templates/system_stm32f4xx.c
 
 
 
@@ -62,31 +62,31 @@ SOURCES += modules/RPC-ChannelCodec/src/channel_codec/channel_codec.c
 
 
 
-SOURCES += $(HAL_DRIVER)/Src/stm32l1xx_hal.c
-SOURCES += $(HAL_DRIVER)/Src/stm32l1xx_hal_adc.c
-SOURCES += $(HAL_DRIVER)/Src/stm32l1xx_hal_adc_ex.c
-SOURCES += $(HAL_DRIVER)/Src/stm32l1xx_hal_cortex.c
-SOURCES += $(HAL_DRIVER)/Src/stm32l1xx_hal_dac.c
-SOURCES += $(HAL_DRIVER)/Src/stm32l1xx_hal_dac_ex.c
-SOURCES += $(HAL_DRIVER)/Src/stm32l1xx_hal_dma.c
-SOURCES += $(HAL_DRIVER)/Src/stm32l1xx_hal_flash.c
-SOURCES += $(HAL_DRIVER)/Src/stm32l1xx_hal_flash_ex.c
-SOURCES += $(HAL_DRIVER)/Src/stm32l1xx_hal_flash_ramfunc.c
-SOURCES += $(HAL_DRIVER)/Src/stm32l1xx_hal_gpio.c
-SOURCES += $(HAL_DRIVER)/Src/stm32l1xx_hal_i2c.c
-SOURCES += $(HAL_DRIVER)/Src/stm32l1xx_hal_pcd.c
-SOURCES += $(HAL_DRIVER)/Src/stm32l1xx_hal_pcd_ex.c
-SOURCES += $(HAL_DRIVER)/Src/stm32l1xx_hal_pwr.c
-SOURCES += $(HAL_DRIVER)/Src/stm32l1xx_hal_pwr_ex.c
-SOURCES += $(HAL_DRIVER)/Src/stm32l1xx_hal_rcc.c
-SOURCES += $(HAL_DRIVER)/Src/stm32l1xx_hal_rcc_ex.c
-SOURCES += $(HAL_DRIVER)/Src/stm32l1xx_hal_rtc.c
-SOURCES += $(HAL_DRIVER)/Src/stm32l1xx_hal_rtc_ex.c
-SOURCES += $(HAL_DRIVER)/Src/stm32l1xx_hal_spi.c
-SOURCES += $(HAL_DRIVER)/Src/stm32l1xx_hal_spi_ex.c
-SOURCES += $(HAL_DRIVER)/Src/stm32l1xx_hal_tim.c
-SOURCES += $(HAL_DRIVER)/Src/stm32l1xx_hal_tim_ex.c
-SOURCES += $(HAL_DRIVER)/Src/stm32l1xx_hal_uart.c
+SOURCES += $(HAL_DRIVER)/Src/stm32f4xx_hal.c
+SOURCES += $(HAL_DRIVER)/Src/stm32f4xx_hal_adc.c
+SOURCES += $(HAL_DRIVER)/Src/stm32f4xx_hal_adc_ex.c
+SOURCES += $(HAL_DRIVER)/Src/stm32f4xx_hal_cortex.c
+SOURCES += $(HAL_DRIVER)/Src/stm32f4xx_hal_dac.c
+SOURCES += $(HAL_DRIVER)/Src/stm32f4xx_hal_dac_ex.c
+SOURCES += $(HAL_DRIVER)/Src/stm32f4xx_hal_dma.c
+SOURCES += $(HAL_DRIVER)/Src/stm32f4xx_hal_flash.c
+SOURCES += $(HAL_DRIVER)/Src/stm32f4xx_hal_flash_ex.c
+SOURCES += $(HAL_DRIVER)/Src/stm32f4xx_hal_flash_ramfunc.c
+SOURCES += $(HAL_DRIVER)/Src/stm32f4xx_hal_gpio.c
+SOURCES += $(HAL_DRIVER)/Src/stm32f4xx_hal_i2c.c
+#SOURCES += $(HAL_DRIVER)/Src/stm32f4xx_hal_pcd.c
+#SOURCES += $(HAL_DRIVER)/Src/stm32f4xx_hal_pcd_ex.c
+SOURCES += $(HAL_DRIVER)/Src/stm32f4xx_hal_pwr.c
+SOURCES += $(HAL_DRIVER)/Src/stm32f4xx_hal_pwr_ex.c
+SOURCES += $(HAL_DRIVER)/Src/stm32f4xx_hal_rcc.c
+SOURCES += $(HAL_DRIVER)/Src/stm32f4xx_hal_rcc_ex.c
+SOURCES += $(HAL_DRIVER)/Src/stm32f4xx_hal_rtc.c
+SOURCES += $(HAL_DRIVER)/Src/stm32f4xx_hal_rtc_ex.c
+SOURCES += $(HAL_DRIVER)/Src/stm32f4xx_hal_spi.c
+#SOURCES += $(HAL_DRIVER)/Src/stm32f4xx_hal_spi_ex.c
+SOURCES += $(HAL_DRIVER)/Src/stm32f4xx_hal_tim.c
+SOURCES += $(HAL_DRIVER)/Src/stm32f4xx_hal_tim_ex.c
+SOURCES += $(HAL_DRIVER)/Src/stm32f4xx_hal_usart.c
 
 
 
@@ -96,7 +96,7 @@ SOURCES += $(FREERTOSDIR)/FreeRTOS/Source/tasks.c
 SOURCES += $(FREERTOSDIR)/FreeRTOS/Source/queue.c
 SOURCES += $(FREERTOSDIR)/FreeRTOS/Source/list.c
 SOURCES += $(FREERTOSDIR)/FreeRTOS/Source/croutine.c
-SOURCES += $(FREERTOSDIR)/FreeRTOS/Source/portable/GCC/ARM_CM3/port.c 
+SOURCES += $(FREERTOSDIR)/FreeRTOS/Source/portable/GCC/ARM_CM4F/port.c 
 SOURCES += $(FREERTOSDIR)/FreeRTOS/Source/timers.c
 #Memory management
 SOURCES += $(FREERTOSDIR)/FreeRTOS/Source/portable/MemMang/heap_1.c
@@ -125,10 +125,10 @@ CPPFLAGS += -Imodules/RPC-ChannelCodec/include
 CPPFLAGS += -Imodules/RPC-ChannelCodec/include/errorlogger_dummy
 CPPFLAGS += -I$(HAL_DRIVER)/Inc
 
-CPPFLAGS += -I$(FREERTOSDIR)/FreeRTOS/Source/include
+CPPFLAGS += -I$(FREERTOSDIR)/FreeRTOS/Source/include/
 CPPFLAGS += -I$(CMSIS)/Include
-CPPFLAGS += -I$(CMSIS)/Device/ST/STM32L1xx/Include
-CPPFLAGS += -I$(FREERTOSDIR)/FreeRTOS/Source/portable/GCC/ARM_CM3/
+CPPFLAGS += -I$(CMSIS)/Device/ST/STM32F4xx/Include
+CPPFLAGS += -I$(FREERTOSDIR)/FreeRTOS/Source/portable/GCC/ARM_CM4F/
 CPPFLAGS += -I$(CMSIS)/RTOS/Template
 
 
@@ -192,14 +192,14 @@ LDFLAGS += -lm
 LDFLAGS += --specs=nano.specs
 LDFLAGS += -Wl,-Map=$(TARGET).map,--cref
 LDFLAGS += -Wl,--gc-sections
-LDFLAGS += -T$(CMSIS)/Device/ST/STM32L1xx/Source/Templates/gcc/linker/$(MCU)_FLASH.ld
+LDFLAGS += -TSTM32F407VGTx_FLASH.ld
 
 #============================================================================
 
 
 # Define programs and commands
 #TOOLCHAIN = arm-none-eabi
-TOOLCHAIN = C:/arm/gcc-4.9.3-20150609/bin/arm-none-eabi-
+TOOLCHAIN = arm-none-eabi-
 
 CC        = $(TOOLCHAIN)gcc
 OBJCOPY   = $(TOOLCHAIN)objcopy
@@ -213,9 +213,9 @@ OPENOCD   = openocd
 DOXYGEN   = doxygen
 STLINK    = st-flash
 
-SH = "C:\Program Files (x86)\Git\usr\bin\sh.exe"
-MKDIR =  "C:\Program Files (x86)\Git\usr\bin\mkdir.exe"
-TAIL =  "C:\Program Files (x86)\Git\usr\bin\tail.exe"
+SH = "sh"
+MKDIR =  "mkdir"
+TAIL =  "tail"
 
 ifeq (AMD64, $(PROCESSOR_ARCHITEW6432))
   SUBWCREV = tools/SubWCRev64.exe
@@ -232,11 +232,12 @@ GENDEPFLAGS = -MMD -MP -MF $(OBJDIR)/$(*D)/$(*F).d
 # Combine all necessary flags and optional flags
 # Add target processor to flags.
 #
-CPU = -mcpu=cortex-m3 -mthumb -mfloat-abi=soft
+#CPU = -mcpu=cortex-m3 -mthumb -mfloat-abi=soft
 #CPU = -mcpu=cortex-m3 -mthumb -mfloat-abi=soft
 #CPU = -mcpu=cortex-m4 -mthumb 
 #CPU = -mcpu=cortex-m4 -mthumb -mfloat-abi=softfp -mfpu=fpv4-sp-d16
-
+CPU = -mcpu=cortex-m4 -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16
+  
 CFLAGS   += $(CPU)
 CXXFLAGS += $(CPU)
 ASFLAGS  += $(CPU)
