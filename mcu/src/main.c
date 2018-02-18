@@ -27,8 +27,10 @@
 #include "serial.h"
 
 #include "task_adc.h"
+#include "task_external_adc.h"
 #include "task_key.h"
 #include "task_led.h"
+#include "task_display.h"
 #include "task_rpc_serial_in.h"
 
 #include "rpc_transmission/client/generated_app/RPC_TRANSMISSION_mcu2qt.h"
@@ -245,11 +247,14 @@ int main(void) {
     bool hardreset = false;
     uint32_t ledstatus;
 
-    HAL_Init();
     SystemClock_Config();
     SystemCoreClockUpdate();
+    HAL_RCC_GetPCLK1Freq();
+    HAL_RCC_GetPCLK2Freq();
+    HAL_Init();
     boardConfigurePIO();
 
+    // CLEAR_SHUTDOWN();
     xSerialPortInitMinimal(serCOM_DBG, 115200, 100);
     xSerialPortInitMinimal(serCOM_RPC, 115200, 300);
 
@@ -291,6 +296,17 @@ int main(void) {
 
     keyRegisterHandle(&keyPressHandle);
 
+#if 0
+    while (1) {
+        SET_ADC_SCK();
+        SET_CS_ADC();
+        SET_ADC_MOSI();
+
+        CLEAR_ADC_SCK();
+        CLEAR_CS_ADC();
+        CLEAR_ADC_MOSI();
+    }
+#endif
 #if 1
 
     /* If all is well, the scheduler will now be running, and the following line
@@ -300,10 +316,15 @@ int main(void) {
     for more details. */
 
     xTaskCreate(taskLED, "LED", mainLED_TASK_STACK /*stack*/, NULL, mainLED_TASK_PRIORITY /*prior*/, &taskHandles[taskHandleID_LED]);
-    xTaskCreate(taskKey, "KEY", mainKEY_TASK_STACK /*stack*/, NULL, mainKEY_TASK_PRIORITY /*prior*/, &taskHandles[taskHandleID_key]);
+    // xTaskCreate(taskKey, "KEY", mainKEY_TASK_STACK /*stack*/, NULL, mainKEY_TASK_PRIORITY /*prior*/, &taskHandles[taskHandleID_key]);
     xTaskCreate(taskRPCSerialIn, "RPC", mainRPC_SERIAL_TASK_STACK /*stack*/, NULL, mainRPC_TASK_SERIAL_PRIORITY /*prior*/,
                 &taskHandles[taskHandleID_RPCSerialIn]);
     xTaskCreate(taskADC, "ADC", mainADC_TASK_STACK /*stack*/, NULL, mainADC_TASK_PRIORITY /*prior*/, &taskHandles[taskHandleID_adc]);
+    xTaskCreate(taskExternalADC, "ExtADC", mainEXTERNAL_ADC_TASK_STACK /*stack*/, NULL, mainEXTERNAL_ADC_TASK_PRIORITY /*prior*/,
+                &taskHandles[taskHandleID_external_adc]);
+
+    xTaskCreate(taskDisplay, "Display", mainDISPLAY_TASK_STACK /*stack*/, NULL, mainDISPLAY_TASK_PRIORITY /*prior*/,
+                &taskHandles[taskHandleID_display]);
 
     for (int i = 0; i < taskHandleID_count; i++) {
         if ((i != taskHandleID_RPCSerialIn))

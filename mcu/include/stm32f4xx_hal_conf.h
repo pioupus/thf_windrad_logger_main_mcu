@@ -70,7 +70,7 @@ extern "C" {
 /* #define HAL_HASH_MODULE_ENABLED     */
 #define HAL_GPIO_MODULE_ENABLED
 #define HAL_I2C_MODULE_ENABLED
-/* #define HAL_I2S_MODULE_ENABLED      */
+#define HAL_I2S_MODULE_ENABLED
 /* #define HAL_IWDG_MODULE_ENABLED     */
 /* #define HAL_LTDC_MODULE_ENABLED     */
 #define HAL_PWR_MODULE_ENABLED
@@ -79,7 +79,7 @@ extern "C" {
 #define HAL_RTC_MODULE_ENABLED
 /* #define HAL_SAI_MODULE_ENABLED        */
 /* #define HAL_SD_MODULE_ENABLED         */
-#define HAL_SPI_MODULE_ENABLED
+//#define HAL_SPI_MODULE_ENABLED
 #define HAL_TIM_MODULE_ENABLED
 //#define HAL_UART_MODULE_ENABLED
 #define HAL_USART_MODULE_ENABLED
@@ -90,6 +90,7 @@ extern "C" {
 #define HAL_PCD_MODULE_ENABLED
 /* #define HAL_HCD_MODULE_ENABLED      */
 
+#define SPI_I2S_FULLDUPLEX_SUPPORT
 /* ########################## HSE/HSI Values adaptation ##################### */
 /**
   * @brief Adjust the value of External High Speed oscillator (HSE) used in your application.
@@ -162,7 +163,7 @@ extern "C" {
   * @brief Uncomment the line below to expanse the "assert_param" macro in the
   *        HAL drivers code
   */
-/* #define USE_FULL_ASSERT    1U */
+#define USE_FULL_ASSERT 1U
 
 /* ################## SPI peripheral configuration ########################## */
 

@@ -5,3 +5,4 @@
  AllowShortIfStatementsOnASingleLine: false
  AllowShortLoopsOnASingleLine: false
  IndentCaseLabels: true
+ SortIncludes: false

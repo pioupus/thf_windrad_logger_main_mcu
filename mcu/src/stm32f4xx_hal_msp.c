@@ -158,40 +158,23 @@ void HAL_RTC_MspDeInit(RTC_HandleTypeDef *hrtc) {
     /* USER CODE END RTC_MspDeInit 1 */
 }
 
-void HAL_SPI_MspInit(SPI_HandleTypeDef *hspi) {
-    GPIO_InitTypeDef GPIO_InitStruct;
-    if (hspi->Instance == SPI2) {
+void HAL_I2S_MspInit(I2S_HandleTypeDef *hi2s) {
+    if (hi2s->Instance == I2S3) {
         /* USER CODE BEGIN SPI2_MspInit 0 */
 
         /* USER CODE END SPI2_MspInit 0 */
         /* Peripheral clock enable */
-        __HAL_RCC_SPI2_CLK_ENABLE();
-
-        /**SPI2 GPIO Configuration
-         PB12     ------> SPI2_NSS
-         PB13     ------> SPI2_SCK
-         PB15     ------> SPI2_MOSI
-         */
-        GPIO_InitStruct.Pin = GPIO_PIN_12 | GPIO_PIN_13 | GPIO_PIN_15;
-        GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-        GPIO_InitStruct.Pull = GPIO_NOPULL;
-        GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
-        GPIO_InitStruct.Alternate = GPIO_AF5_SPI2;
-        HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-
-        /* USER CODE BEGIN SPI2_MspInit 1 */
-
-        /* USER CODE END SPI2_MspInit 1 */
+        I2S3_CLK_ENABLE();
     }
 }
 
-void HAL_SPI_MspDeInit(SPI_HandleTypeDef *hspi) {
-    if (hspi->Instance == SPI2) {
+void HAL_I2S_MspDeInit(I2S_HandleTypeDef *hi2s) {
+    if (hi2s->Instance == I2S3) {
         /* USER CODE BEGIN SPI2_MspDeInit 0 */
 
         /* USER CODE END SPI2_MspDeInit 0 */
         /* Peripheral clock disable */
-        __HAL_RCC_SPI2_CLK_DISABLE();
+        I2S3_CLK_DISABLE();
 
         /**SPI2 GPIO Configuration
          PB12     ------> SPI2_NSS

@@ -19,6 +19,7 @@
 #include "task_led.h"
 #include "board.h"
 #include "serial.h"
+#include "hd44780.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -268,7 +269,9 @@ void ledInitPattern(ledBlinkPattern_t *p, led_id_t id){
 }
 #endif
 void taskLEDPatternLoop(delayFunction_t delayFunction, ledLoopRestartHandler_t ledLoopRestartHandler) {
+    int i = 0;
     for (;;) {
+
         bool containsFadePatterns = false;
         for (int i = 1; i < lid_LEDCOUNT; i++) {
             ledPatternPriority_t maxPrio = getMaxPatternPriority(i);
@@ -328,7 +331,6 @@ void taskLEDRunStandAloneLEDPatternLoop(ledLoopRestartHandler_t ledLoopRestartHa
 
 void taskLED(void *pvParameters) {
 #if 1
-
     for (int prio = 1; prio < lpp_priority_COUNT; prio++) {
         for (int ledindex = 1; ledindex < lid_LEDCOUNT; ledindex++) {
             ledPatternSetToOff(prio, ledindex);

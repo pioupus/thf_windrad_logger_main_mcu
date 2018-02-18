@@ -183,6 +183,10 @@ typedef enum { les_none, les_on, les_off } led_state_t;
 
 //#define PIN_CS_ADC   			{.pinDef = {.Pin = GPIO_PIN_4, .Mode=GPIO_MODE_OUTPUT_PP, .Speed = GPIO_SPEED_FREQ_MEDIUM,
 //.Pull=GPIO_NOPULL }, .port = GPIOA}
+
+#define PIN_CS_ADC_PIO                                                                                                                               \
+    { .pinDef = {.Pin = GPIO_PIN_4, .Mode = GPIO_MODE_OUTPUT_PP, .Speed = GPIO_SPEED_FREQ_MEDIUM, .Pull = GPIO_NOPULL}, .port = GPIOA }
+
 #define PIN_CS_ADC                                                                                                                                   \
     {                                                                                                                                                \
         .pinDef = {.Pin = GPIO_PIN_4, .Mode = GPIO_MODE_AF_PP, .Speed = GPIO_SPEED_FREQ_MEDIUM, .Pull = GPIO_NOPULL, .Alternate = GPIO_AF6_SPI3},    \
@@ -193,6 +197,10 @@ typedef enum { les_none, les_on, les_off } led_state_t;
 
 //#define PIN_ADC_SCK   			{.pinDef = {.Pin = GPIO_PIN_10, .Mode=GPIO_MODE_OUTPUT_PP, .Speed = GPIO_SPEED_FREQ_MEDIUM,
 //.Pull=GPIO_NOPULL }, .port = GPIOC}
+
+#define PIN_ADC_SCK_PIO                                                                                                                              \
+    { .pinDef = {.Pin = GPIO_PIN_10, .Mode = GPIO_MODE_OUTPUT_PP, .Speed = GPIO_SPEED_FREQ_MEDIUM, .Pull = GPIO_NOPULL}, .port = GPIOC }
+
 #define PIN_ADC_SCK                                                                                                                                  \
     {                                                                                                                                                \
         .pinDef = {.Pin = GPIO_PIN_10, .Mode = GPIO_MODE_AF_PP, .Speed = GPIO_SPEED_FREQ_MEDIUM, .Pull = GPIO_NOPULL, .Alternate = GPIO_AF6_SPI3},   \
@@ -204,14 +212,32 @@ typedef enum { les_none, les_on, les_off } led_state_t;
 //#define PIN_ADC_MISO   			{.pinDef = {.Pin = GPIO_PIN_11, .Mode=GPIO_MODE_INPUT, .Speed = GPIO_SPEED_FREQ_MEDIUM,
 //.Pull=GPIO_NOPULL
 //}, .port = GPIOC}
+
+#define PIN_ADC_MISO_PIO                                                                                                                             \
+    {                                                                                                                                                \
+        .pinDef =                                                                                                                                    \
+            {                                                                                                                                        \
+                .Pin = GPIO_PIN_11, .Mode = GPIO_MODE_INPUT, .Speed = GPIO_SPEED_FREQ_MEDIUM, .Pull = GPIO_NOPULL,                                   \
+            },                                                                                                                                       \
+        .port = GPIOC                                                                                                                                \
+    }
+
 #define PIN_ADC_MISO                                                                                                                                 \
     {                                                                                                                                                \
-        .pinDef = {.Pin = GPIO_PIN_11, .Mode = GPIO_MODE_INPUT, .Speed = GPIO_SPEED_FREQ_MEDIUM, .Pull = GPIO_NOPULL, .Alternate = GPIO_AF6_SPI3},   \
+        .pinDef = {.Pin = GPIO_PIN_11,                                                                                                               \
+                   .Mode = GPIO_MODE_AF_PP,                                                                                                          \
+                   .Speed = GPIO_SPEED_FREQ_MEDIUM,                                                                                                  \
+                   .Pull = GPIO_NOPULL,                                                                                                              \
+                   .Alternate = GPIO_AF5_I2S3ext},                                                                                                   \
         .port = GPIOC                                                                                                                                \
     }
 
 //#define PIN_ADC_MOSI   			{.pinDef = {.Pin = GPIO_PIN_12, .Mode=GPIO_MODE_OUTPUT_PP, .Speed = GPIO_SPEED_FREQ_MEDIUM,
 //.Pull=GPIO_NOPULL }, .port = GPIOC}
+
+#define PIN_ADC_MOSI_PIO                                                                                                                             \
+    { .pinDef = {.Pin = GPIO_PIN_12, .Mode = GPIO_MODE_OUTPUT_PP, .Speed = GPIO_SPEED_FREQ_MEDIUM, .Pull = GPIO_NOPULL}, .port = GPIOC }
+
 #define PIN_ADC_MOSI                                                                                                                                 \
     {                                                                                                                                                \
         .pinDef = {.Pin = GPIO_PIN_12, .Mode = GPIO_MODE_AF_PP, .Speed = GPIO_SPEED_FREQ_MEDIUM, .Pull = GPIO_NOPULL, .Alternate = GPIO_AF6_SPI3},   \
@@ -452,6 +478,10 @@ typedef enum { les_none, les_on, les_off } led_state_t;
 #define COM_RPC_BASE USART3
 //#define COM_RPC_CLK RCC_APB2Periph_USART3
 
+#define I2S3 SPI3
+#define I2S3_CLK_ENABLE() __HAL_RCC_SPI3_CLK_ENABLE()
+#define I2S3_CLK_DISABLE() __HAL_RCC_SPI3_CLK_DISABLE()
+
 void boardConfigurePIO(void);
 void boardPowerOnPIO(void);
 void boardInitAFPin(const pinGPIO_t *pinAF);
@@ -462,5 +492,6 @@ void boardReinitPins(void);
 
 bool boardTestKey(key_id_t keyID);
 void boardSetLED(led_id_t ledID, led_state_t ledState);
+void boardDisplayWriteData(uint8_t data);
 
 #endif /* BOARD_H_ */

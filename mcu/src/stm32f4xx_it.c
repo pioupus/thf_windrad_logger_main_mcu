@@ -21,6 +21,44 @@
 /*            Cortex-M4 Processor Exceptions Handlers                         */
 /******************************************************************************/
 
+void prvGetRegistersFromStack(uint32_t *pulFaultStackAddress) {
+    /* These are volatile to try and prevent the compiler/linker optimising them
+    away as the variables never actually get used.  If the debugger won't show the
+    values of the variables, make them global my moving their declaration outside
+    of this function. */
+    volatile uint32_t r0;
+    volatile uint32_t r1;
+    volatile uint32_t r2;
+    volatile uint32_t r3;
+    volatile uint32_t r12;
+    volatile uint32_t lr;  /* Link register. */
+    volatile uint32_t pc;  /* Program counter. */
+    volatile uint32_t psr; /* Program status register. */
+
+    r0 = pulFaultStackAddress[0];
+    r1 = pulFaultStackAddress[1];
+    r2 = pulFaultStackAddress[2];
+    r3 = pulFaultStackAddress[3];
+
+    r12 = pulFaultStackAddress[4];
+    lr = pulFaultStackAddress[5];
+    pc = pulFaultStackAddress[6];
+    psr = pulFaultStackAddress[7];
+
+    (void)r0;
+    (void)r1;
+    (void)r2;
+    (void)r3;
+
+    (void)r12;
+    (void)lr;
+    (void)pc;
+    (void)psr;
+    /* When the following line is hit, the variables contain the register values. */
+    for (;;)
+        ;
+}
+
 /**
   * @brief   This function handles NMI exception.
   * @param  None
@@ -35,9 +73,14 @@ void NMI_Handler(void) {
   * @retval None
   */
 void HardFault_Handler(void) {
-    /* Go to infinite loop when Hard Fault exception occurs */
-    while (1) {
-    }
+    __asm volatile(" tst lr, #4                                                \n"
+                   " ite eq                                                    \n"
+                   " mrseq r0, msp                                             \n"
+                   " mrsne r0, psp                                             \n"
+                   " ldr r1, [r0, #24]                                         \n"
+                   " ldr r2, handler2_address_const                            \n"
+                   " bx r2                                                     \n"
+                   " handler2_address_const: .word prvGetRegistersFromStack    \n");
 }
 
 /**
@@ -73,6 +116,37 @@ void UsageFault_Handler(void) {
     }
 }
 
+/**
+  * @brief  This function handles main I2S interrupt.
+  * @param  None
+  * @retval 0 if correct communication, else wrong communication
+  */
+void DMA1_Stream7_IRQHandler(void) {
+}
+
+/**
+  * @brief  This function handles DMA Stream interrupt request.
+  * @param  None
+  * @retval None
+  */
+void DMA1_Stream3_IRQHandler(void) {
+}
+
+void DMA1_Stream5_IRQHandler(void) {
+    CLEAR_DISCO_LED_GREEN();
+    HAL_DMA_IRQHandler(hi2s3.hdmatx);
+    SET_DISCO_LED_GREEN();
+} /* DMA1 Stream 5                */
+  /**
+    * @brief  This function handles DMA Stream interrupt request.
+    * @param  None
+    * @retval None
+    */
+void DMA1_Stream2_IRQHandler(void) {
+    CLEAR_DISCO_LED_RED();
+    HAL_DMA_IRQHandler(hi2s3.hdmarx);
+    SET_DISCO_LED_RED();
+}
 /**
   * @brief  This function handles SVCall exception.
   * @param  None
@@ -121,14 +195,13 @@ void DMA1_Stream0_IRQHandler(void) {
 } /* DMA1 Stream 0                */
 void DMA1_Stream1_IRQHandler(void) {
 } /* DMA1 Stream 1                */
-void DMA1_Stream2_IRQHandler(void) {
-} /* DMA1 Stream 2                */
-void DMA1_Stream3_IRQHandler(void) {
-} /* DMA1 Stream 3                */
+// void DMA1_Stream2_IRQHandler(void) {
+//} /* DMA1 Stream 2                */
+// void DMA1_Stream3_IRQHandler(void) {
+//} /* DMA1 Stream 3                */
 void DMA1_Stream4_IRQHandler(void) {
 } /* DMA1 Stream 4                */
-void DMA1_Stream5_IRQHandler(void) {
-} /* DMA1 Stream 5                */
+
 void DMA1_Stream6_IRQHandler(void) {
 } /* DMA1 Stream 6                */
 void ADC_IRQHandler(void) {
@@ -186,8 +259,8 @@ void TIM8_TRG_COM_TIM14_IRQHandler(void) {
 } /* TIM8 Trigger and Commutation and TIM14 */
 void TIM8_CC_IRQHandler(void) {
 } /* TIM8 Capture Compare         */
-void DMA1_Stream7_IRQHandler(void) {
-} /* DMA1 Stream7                 */
+// void DMA1_Stream7_IRQHandler(void) {
+//} /* DMA1 Stream7                 */
 void FSMC_IRQHandler(void) {
 } /* FSMC                         */
 void SDIO_IRQHandler(void) {
@@ -195,6 +268,12 @@ void SDIO_IRQHandler(void) {
 void TIM5_IRQHandler(void) {
 } /* TIM5                         */
 void SPI3_IRQHandler(void) {
+    /* USER CODE BEGIN SPI3_IRQn 0 */
+
+    /* USER CODE END SPI3_IRQn 0 */
+    HAL_I2S_IRQHandler(&hi2s3);
+    /* USER CODE BEGIN SPI3_IRQn 1 */
+
 } /* SPI3                         */
 void UART4_IRQHandler(void) {
 } /* UART4                        */

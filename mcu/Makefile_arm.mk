@@ -18,8 +18,8 @@ SRC = src
 # Libraries
 LIBRARIES = $(SRC)/libraries
 
-CMSIS = $(LIBRARIES)/STM32Cube_FW_F4_V1.16.0/Drivers/CMSIS
-HAL_DRIVER = $(LIBRARIES)/STM32Cube_FW_F4_V1.16.0/Drivers/STM32F4xx_HAL_Driver
+CMSIS = $(LIBRARIES)/STM32Cube_FW_F4_V1.18.0/Drivers/CMSIS
+HAL_DRIVER = $(LIBRARIES)/STM32Cube_FW_F4_V1.18.0/Drivers/STM32F4xx_HAL_Driver
 
 FREERTOSDIR = $(LIBRARIES)/FreeRTOSv9.0.0
 
@@ -30,9 +30,12 @@ FREERTOSDIR = $(LIBRARIES)/FreeRTOSv9.0.0
 SOURCES += $(SRC)/main.c
 
 SOURCES += $(SRC)/board.c
+SOURCES += $(SRC)/hd44780.c
 SOURCES += $(SRC)/task_led.c
 SOURCES += $(SRC)/task_key.c
 SOURCES += $(SRC)/task_adc.c
+SOURCES += $(SRC)/task_display.c
+SOURCES += $(SRC)/task_external_adc.c
 SOURCES += $(SRC)/task_rpc_serial_in.c
 SOURCES += $(SRC)/syscalls.c
 SOURCES += $(LIBRARIES)/serial.c
@@ -74,6 +77,8 @@ SOURCES += $(HAL_DRIVER)/Src/stm32f4xx_hal_flash_ex.c
 SOURCES += $(HAL_DRIVER)/Src/stm32f4xx_hal_flash_ramfunc.c
 SOURCES += $(HAL_DRIVER)/Src/stm32f4xx_hal_gpio.c
 SOURCES += $(HAL_DRIVER)/Src/stm32f4xx_hal_i2c.c
+SOURCES += $(HAL_DRIVER)/Src/stm32f4xx_hal_i2s.c
+SOURCES += $(HAL_DRIVER)/Src/stm32f4xx_hal_i2s_ex.c
 #SOURCES += $(HAL_DRIVER)/Src/stm32f4xx_hal_pcd.c
 #SOURCES += $(HAL_DRIVER)/Src/stm32f4xx_hal_pcd_ex.c
 SOURCES += $(HAL_DRIVER)/Src/stm32f4xx_hal_pwr.c
@@ -166,7 +171,7 @@ CFLAGS += -Wa,-adhlns=$(OBJDIR)/$(*D)/$(*F).lst
 #CFLAGS += -fsingle-precision-constant
 
 # use USE_FULL_ASSERT
-CFLAGS += -DUSE_FULL_ASSERT
+#CFLAGS += -DUSE_FULL_ASSERT
 # This will not work without recompiling App/STM32F4-Discovery/Libraries
 #
 # CFLAGS += -fshort-double
