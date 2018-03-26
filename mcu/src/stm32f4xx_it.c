@@ -133,9 +133,7 @@ void DMA1_Stream3_IRQHandler(void) {
 }
 
 void DMA1_Stream5_IRQHandler(void) {
-    CLEAR_DISCO_LED_GREEN();
     HAL_DMA_IRQHandler(hi2s3.hdmatx);
-    SET_DISCO_LED_GREEN();
 } /* DMA1 Stream 5                */
   /**
     * @brief  This function handles DMA Stream interrupt request.
@@ -143,9 +141,7 @@ void DMA1_Stream5_IRQHandler(void) {
     * @retval None
     */
 void DMA1_Stream2_IRQHandler(void) {
-    CLEAR_DISCO_LED_RED();
     HAL_DMA_IRQHandler(hi2s3.hdmarx);
-    SET_DISCO_LED_RED();
 }
 /**
   * @brief  This function handles SVCall exception.

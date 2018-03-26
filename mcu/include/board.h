@@ -135,9 +135,9 @@ typedef enum { les_none, les_on, les_off } led_state_t;
 #define CLEAR_LED_GREEN() HAL_GPIO_WritePin(GPIOE, GPIO_PIN_12, GPIO_PIN_RESET)
 
 #define PIN_LED_YELLOW                                                                                                                               \
-    { .pinDef = {.Pin = GPIO_PIN_15, .Mode = GPIO_MODE_OUTPUT_PP, .Speed = GPIO_SPEED_FREQ_MEDIUM, .Pull = GPIO_NOPULL}, .port = GPIOE }
-#define SET_LED_YELLOW() HAL_GPIO_WritePin(GPIOE, GPIO_PIN_15, GPIO_PIN_SET)
-#define CLEAR_LED_YELLOW() HAL_GPIO_WritePin(GPIOE, GPIO_PIN_15, GPIO_PIN_RESET)
+    { .pinDef = {.Pin = GPIO_PIN_11, .Mode = GPIO_MODE_OUTPUT_PP, .Speed = GPIO_SPEED_FREQ_MEDIUM, .Pull = GPIO_NOPULL}, .port = GPIOE }
+#define SET_LED_YELLOW() HAL_GPIO_WritePin(GPIOE, GPIO_PIN_11, GPIO_PIN_SET)
+#define CLEAR_LED_YELLOW() HAL_GPIO_WritePin(GPIOE, GPIO_PIN_11, GPIO_PIN_RESET)
 
 #define PIN_LED_COM_TOP_YELLOW                                                                                                                       \
     { .pinDef = {.Pin = GPIO_PIN_13, .Mode = GPIO_MODE_OUTPUT_PP, .Speed = GPIO_SPEED_FREQ_MEDIUM, .Pull = GPIO_NOPULL}, .port = GPIOC }
@@ -481,6 +481,28 @@ typedef enum { les_none, les_on, les_off } led_state_t;
 #define I2S3 SPI3
 #define I2S3_CLK_ENABLE() __HAL_RCC_SPI3_CLK_ENABLE()
 #define I2S3_CLK_DISABLE() __HAL_RCC_SPI3_CLK_DISABLE()
+
+typedef enum {
+    ext_adc_channel_raw_curr_l1_pos = 0,
+    ext_adc_channel_raw_curr_l1_neg = 1,
+    ext_adc_channel_raw_curr_l2_pos = 2,
+    ext_adc_channel_raw_curr_l2_neg = 3,
+    ext_adc_channel_raw_curr_l3_pos = 4,
+    ext_adc_channel_raw_curr_l3_neg = 5,
+
+    ext_adc_channel_raw_vref = 6,
+    ext_adc_channel_raw_volt_l12 = 7,
+    ext_adc_channel_raw_volt_l23 = 8,
+    ext_adc_channel_raw_volt_l31 = 9,
+    ext_adc_channel_raw_aux_volt = 10,
+
+    ext_adc_channel_raw_temp_l1 = 12,
+    ext_adc_channel_raw_temp_l2 = 13,
+    ext_adc_channel_raw_temp_l3 = 14,
+
+    ext_adc_channel_raw_gnd1 = 15,
+    ext_adc_channel_raw_gnd2 = 11,
+} ext_adc_raw_channel_t;
 
 void boardConfigurePIO(void);
 void boardPowerOnPIO(void);

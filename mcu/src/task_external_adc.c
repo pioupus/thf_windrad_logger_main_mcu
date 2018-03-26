@@ -19,55 +19,60 @@
 #include "task_external_adc.h"
 #include "main.h"
 #include "task.h"
+
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
+#include <math.h>
 
-#define RX_BUFFER_SIZE 256
-#define TX_BUFFER_SIZE 256
-uint16_t adc_input_buffer[RX_BUFFER_SIZE];
-uint16_t adc_output_buffer[TX_BUFFER_SIZE];
+const uint16_t ADS_MANUAL_MODE = 0x1000;
+const uint16_t ADS_NXT_CHANNEL_POS = 7;
 
-void I2S3_ClockConfig(I2S_HandleTypeDef *hi2s, uint32_t AudioFreq) {
-    RCC_PeriphCLKInitTypeDef rccclkinit;
+const uint16_t ADS_GPIO_MODE = 0x000F;
 
-    /*Enable PLLI2S clock*/
-    HAL_RCCEx_GetPeriphCLKConfig(&rccclkinit);
-    /* PLLI2S_VCO Input = HSE_VALUE/PLL_M = 1 Mhz */
+const uint16_t ADS_CTR_REG = 0x4000;
+const uint16_t ADS_CTR_REG_RESET = 0x0200;
+const uint16_t ADS_CTR_REG_GPIO_OUTPUT = 0x000F;
 
-    /* Audio frequency multiple of 8 (8/16/32/48/96/192)*/
-    /* PLLI2S_VCO Output = PLLI2S_VCO Input * PLLI2SN = 192 Mhz */
-    /* I2SCLK = PLLI2S_VCO Output/PLLI2SR = 192/6 = 32 Mhz */
-    rccclkinit.PeriphClockSelection = RCC_PERIPHCLK_I2S;
-    rccclkinit.PLLI2S.PLLI2SN = 256;
-    rccclkinit.PLLI2S.PLLI2SR = 1;
-    HAL_RCCEx_PeriphCLKConfig(&rccclkinit);
-}
+#define CHANNEL_COUNT 14
+#define ADC_WORD_SIZE 2
+#define ADC_RECORDS_TO_BUFFER 128
 
-/**
-  * @brief  Starts playing audio stream from a data buffer for a determined size.
-  * @param  pBuffer: Pointer to the buffer
-  * @param  Size: Number of audio data BYTES.
-  * @retval AUDIO_OK if correct communication, else wrong communication
-  */
-uint8_t external_adc_transmission() {
-    /* Call the audio Codec Play function */
+#define RX_BUFFER_SIZE ADC_RECORDS_TO_BUFFER *CHANNEL_COUNT *ADC_WORD_SIZE
+#define TX_BUFFER_SIZE ADC_RECORDS_TO_BUFFER *CHANNEL_COUNT *ADC_WORD_SIZE
 
-    /* Update the Media layer and enable it for play */
-    //  HAL_I2S_Transmit_DMA(&adc_output_buffer, pBuffer, DMA_MAX(Size / 2));
+uint32_t adc_input_buffer[RX_BUFFER_SIZE];
+uint32_t adc_output_buffer[TX_BUFFER_SIZE];
 
-    //  memset(adc_output_buffer, 0xAA, RX_BUFFER_SIZE);
-    for (int i = 0; i < TX_BUFFER_SIZE; i++) {
-        adc_output_buffer[i] = i;
-        adc_input_buffer[i] = i;
-    }
-    HAL_I2SEx_TransmitReceive_DMA(&hi2s3, (uint16_t *)adc_output_buffer, (uint16_t *)&adc_input_buffer[0], RX_BUFFER_SIZE);
-    // HAL_I2S_Transmit_DMA(&hi2s3, (uint16_t *)adc_output_buffer, RX_BUFFER_SIZE);
-    // HAL_I2S_Receive_DMA(&hi2s3, (uint16_t *)adc_output_buffer, RX_BUFFER_SIZE);
+typedef struct {
+    uint32_t time_stamp;
+    int16_t value;
+} adc_data_record_t;
 
-    /* Return AUDIO_OK when all operations are correctly done */
-    return 0;
-}
+adc_data_record_t adc_channels[ext_adc_value_COUNT][ADC_RECORDS_TO_BUFFER];
+
+static int16_t power_currents_average[i_COUNT];
+static uint16_t power_currents_effective[i_COUNT];
+
+static int16_t power_voltages_average[u_COUNT];
+static uint16_t power_voltages_effective[u_COUNT];
+
+static uint16_t temparatures_average[3];
+
+const ext_adc_raw_channel_t ORDER_OF_ACQUISITION[] = {
+#if 1
+    ext_adc_channel_raw_curr_l1_neg, ext_adc_channel_raw_curr_l1_pos, ext_adc_channel_raw_curr_l2_pos, ext_adc_channel_raw_curr_l2_neg,
+    ext_adc_channel_raw_curr_l3_pos, ext_adc_channel_raw_curr_l3_neg, ext_adc_channel_raw_vref,        ext_adc_channel_raw_volt_l12,
+    ext_adc_channel_raw_volt_l23,    ext_adc_channel_raw_volt_l31,    ext_adc_channel_raw_aux_volt,    ext_adc_channel_raw_temp_l1,
+    ext_adc_channel_raw_temp_l2,     ext_adc_channel_raw_temp_l3
+#endif
+};
+
+#define LAST_INDEX_IN_ACQUIRE_ORDER (sizeof(ORDER_OF_ACQUISITION)) / (sizeof(ext_adc_raw_channel_t)) - 1
+
+#define LAST_CHANNEL_IN_ACQUIRE_ORDER ORDER_OF_ACQUISITION[LAST_INDEX_IN_ACQUIRE_ORDER]
+
+static SemaphoreHandle_t semaphore_adc_half_buffer_ready;
 
 static void I2S3_MspInit(void) {
     static DMA_HandleTypeDef hdma_i2sTx;
@@ -124,9 +129,7 @@ static void I2S3_MspInit(void) {
     HAL_NVIC_EnableIRQ(DMA1_Stream2_IRQn);
 }
 
-#if 1
-/* RTC init function */
-void MX_I2S_Init(void) {
+static void MX_I2S_Init_DMA(void) {
 
     hi2s3.Instance = I2S3;
     __HAL_I2S_DISABLE(&hi2s3);
@@ -136,208 +139,324 @@ void MX_I2S_Init(void) {
     hi2s3.Init.DataFormat = I2S_DATAFORMAT_32B;
     hi2s3.Init.MCLKOutput = I2S_MCLKOUTPUT_DISABLE;
     hi2s3.Init.AudioFreq = I2S_AUDIOFREQ_192K;
-    hi2s3.Init.CPOL = I2S_CPOL_HIGH;
+    hi2s3.Init.CPOL = I2S_CPOL_LOW;
     hi2s3.Init.ClockSource = I2S_CLOCK_PLL;
     hi2s3.Init.FullDuplexMode = I2S_FULLDUPLEXMODE_ENABLE;
 
     __HAL_I2S_ENABLE(&hi2s3);
     HAL_I2S_Init(&hi2s3);
-
-#if 0
-    hi2s3_ext.Instance = I2S3ext;
-    __HAL_I2S_DISABLE(&hi2s3_ext);
-
-    hi2s3_ext.Init.Mode = I2S_MODE_SLAVE_RX;
-    hi2s3_ext.Init.Standard = I2S_STANDARD_PCM_SHORT;
-    hi2s3_ext.Init.DataFormat = I2S_DATAFORMAT_32B;
-    hi2s3_ext.Init.MCLKOutput = I2S_MCLKOUTPUT_DISABLE;
-    hi2s3_ext.Init.AudioFreq = I2S_AUDIOFREQ_192K;
-    hi2s3_ext.Init.CPOL = I2S_CPOL_HIGH;
-    hi2s3_ext.Init.ClockSource = I2S_CLOCK_PLL;
-    // hi2s3_ext.Init.FullDuplexMode = I2S_FULLDUPLEXMODE_ENABLE;
-
-    __HAL_I2S_ENABLE(&hi2s3_ext);
-    HAL_I2S_Init(&hi2s3_ext);
-
-#endif
 
     I2S3_MspInit();
-    //__HAL_I2S_ENABLE_IT(&hi2s3, I2S_IT_TXE);
-    //__HAL_I2S_ENABLE_IT(&hi2s3_ext, I2S_IT_RXNE);
-
-    /// I2S3ext
 }
-#else
 
-/**
-  * @brief  Initializes the Audio Codec audio interface (I2S)
-  * @note   This function assumes that the I2S input clock
-  *         is already configured and ready to be used.
-  * @param  AudioFreq: Audio frequency to be configured for the I2S peripheral.
-  */
-static void MX_I2S_Init(uint32_t AudioFreq) {
-    /* Initialize the hAudioInI2s and haudio_in_i2sext Instance parameters */
-    hi2s3.Instance = AUDIO_IN_I2Sx;
-    hi2s3_ext.Instance = I2S3ext;
+static void MX_I2S_Init_poll(void) {
 
-    /* Disable I2S block */
+    hi2s3.Instance = I2S3;
     __HAL_I2S_DISABLE(&hi2s3);
-    __HAL_I2S_DISABLE(&haudio_in_i2sext);
 
-    /* I2S peripheral configuration */
-    hi2s3.Init.AudioFreq = AudioFreq;
-    hi2s3.Init.ClockSource = I2S_CLOCK_PLL;
-    hi2s3.Init.CPOL = I2S_CPOL_LOW;
-    hi2s3.Init.DataFormat = I2S_DATAFORMAT_16B;
-    hi2s3.Init.MCLKOutput = I2S_MCLKOUTPUT_ENABLE;
     hi2s3.Init.Mode = I2S_MODE_MASTER_TX;
-    hi2s3.Init.Standard = I2S_STANDARD_PHILIPS;
-    hi2s3.Init.FullDuplexMode = I2S_FULLDUPLEXMODE_ENABLE;
-    /* Init the I2S */
+    hi2s3.Init.Standard = I2S_STANDARD_PCM_SHORT;
+    hi2s3.Init.DataFormat = I2S_DATAFORMAT_32B;
+    hi2s3.Init.MCLKOutput = I2S_MCLKOUTPUT_DISABLE;
+    hi2s3.Init.AudioFreq = I2S_AUDIOFREQ_192K;
+    hi2s3.Init.CPOL = I2S_CPOL_LOW;
+    hi2s3.Init.ClockSource = I2S_CLOCK_PLL;
+    hi2s3.Init.FullDuplexMode = I2S_FULLDUPLEXMODE_DISABLE;
+
+    __HAL_I2S_ENABLE(&hi2s3);
     HAL_I2S_Init(&hi2s3);
 
-#if 0
-    /* I2Sext peripheral configuration */
-    hi2s3_ext.Init.AudioFreq = AudioFreq;
-    hi2s3_ext.Init.ClockSource = I2S_CLOCK_PLL;
-    hi2s3_ext.Init.CPOL = I2S_CPOL_HIGH;
-    hi2s3_ext.Init.DataFormat = I2S_DATAFORMAT_16B;
-    hi2s3_ext.Init.MCLKOutput = I2S_MCLKOUTPUT_ENABLE;
-    hi2s3_ext.Init.Mode = I2S_MODE_SLAVE_RX;
-    hi2s3_ext.Init.Standard = I2S_STANDARD_PHILIPS;
-
-    /* Init the I2Sext */
-    HAL_I2S_Init(&hi2s3_ext);
-
-    /* Enable I2S block */
-    __HAL_I2S_ENABLE(&hi2s3_ext);
-#endif
-    __HAL_I2S_ENABLE(&hi2s3);
-}
-#endif
-
-static SemaphoreHandle_t semaphoreExternalADCReady;
-
-/**
-  * @brief  Configures the ADC1 channel5.
-  * @param  None
-  * @retval None
-  */
-void ExternalADC_Config(void) {
-
-    semaphoreExternalADCReady = xSemaphoreCreateBinary();
+    I2S3_MspInit();
 }
 
-#if 0
-void HAL_I2S_RxCpltCallback(I2S_HandleTypeDef *hi2s) {
-    __asm__("BKPT");
-    external_adc_transmission();
-}
-#endif
+static void ExternalADC_Config(void) {
 
-#if 0
-/**
- * @brief HAL Handler for Codec DMA Interrupt
- */
-void HAL_I2S_RxHalfCpltCallback(I2S_HandleTypeDef *hi2s) {
-    // external_adc_transmission();
-    __asm__("BKPT");
+    semaphore_adc_half_buffer_ready = xSemaphoreCreateBinary();
 }
-#endif
-#if 0
-/**
-  * @brief  Tx Transfer completed callbacks.
-  * @param  hi2s: I2S handle
-  */
-void HAL_I2S_TxCpltCallback(I2S_HandleTypeDef *hi2s) {
-    //  if (hi2s->Instance == I2S3) {
-    /* Call the user function which will manage directly transfer complete */
-    // BSP_AUDIO_OUT_TransferComplete_CallBack();
-    __asm__("BKPT");
-    external_adc_transmission();
-    //  }
+
+void extadc_get_voltages_avg(int16_t avg[u_COUNT]) {
+    portENTER_CRITICAL();
+    for (int i = 0; i < u_COUNT; i++) {
+        avg[i] = power_voltages_average[i];
+    }
+    portEXIT_CRITICAL();
 }
-#endif
-#if 0
-/**
-  * @brief  Tx Half Transfer completed callbacks.
-  * @param  hi2s: I2S handle
-  */
-void HAL_I2S_TxHalfCpltCallback(I2S_HandleTypeDef *hi2s) {
-    // if (hi2s->Instance == I2S3) {
-    /* Manage the remaining file size and new address offset: This function should
-       be coded by user (its prototype is already declared in stm32f4_discovery_audio.h) */
-    //  BSP_AUDIO_OUT_HalfTransfer_CallBack();
-    //  }
-    __asm__("BKPT");
+
+void extadc_get_voltages_effective(uint16_t eff[3]) {
+    portENTER_CRITICAL();
+    for (int i = 0; i < 3; i++) {
+        eff[i] = power_voltages_effective[i];
+    }
+    portEXIT_CRITICAL();
 }
+
+void extadc_get_currents_avg(int16_t avg[i_COUNT]) {
+    portENTER_CRITICAL();
+    for (int i = 0; i < i_COUNT; i++) {
+        avg[i] = power_currents_average[i];
+    }
+    portEXIT_CRITICAL();
+}
+void extadc_get_currents_effective(uint16_t eff[i_COUNT]) {
+    portENTER_CRITICAL();
+    for (int i = 0; i < i_COUNT; i++) {
+        eff[i] = power_currents_effective[i];
+    }
+    portEXIT_CRITICAL();
+}
+
+void I2S3_ClockConfig(I2S_HandleTypeDef *hi2s, uint32_t AudioFreq) {
+    RCC_PeriphCLKInitTypeDef rccclkinit;
+
+    /*Enable PLLI2S clock*/
+    HAL_RCCEx_GetPeriphCLKConfig(&rccclkinit);
+    /* PLLI2S_VCO Input = HSE_VALUE/PLL_M = 1 Mhz */
+
+    /* Audio frequency multiple of 8 (8/16/32/48/96/192)*/
+    /* PLLI2S_VCO Output = PLLI2S_VCO Input * PLLI2SN = 192 Mhz */
+    /* I2SCLK = PLLI2S_VCO Output/PLLI2SR = 192/6 = 32 Mhz */
+    rccclkinit.PeriphClockSelection = RCC_PERIPHCLK_I2S;
+    rccclkinit.PLLI2S.PLLI2SN = 256;
+    rccclkinit.PLLI2S.PLLI2SR = 1;
+    HAL_RCCEx_PeriphCLKConfig(&rccclkinit);
+}
+
+uint8_t external_adc_transmission() {
+
+    uint8_t next_channel_index = 0;
+    assert(sizeof(ORDER_OF_ACQUISITION) == CHANNEL_COUNT);
+#if 1
+    MX_I2S_Init_poll();
+    adc_output_buffer[0] = ADS_CTR_REG | ADS_CTR_REG_RESET | ADS_CTR_REG_GPIO_OUTPUT;
+    HAL_I2S_Transmit(&hi2s3, (uint16_t *)adc_output_buffer, 1, 100); // reset ADS Chip
+    vTaskDelay((50 / portTICK_RATE_MS));
 #endif
+    MX_I2S_Init_DMA();
+
+    for (int i = 0; i < TX_BUFFER_SIZE; i++) {
+        adc_output_buffer[i] = ADS_MANUAL_MODE | (ORDER_OF_ACQUISITION[next_channel_index] << ADS_NXT_CHANNEL_POS);
+        adc_input_buffer[i] = 0;
+        next_channel_index++;
+        if (next_channel_index >= CHANNEL_COUNT) {
+            next_channel_index = 0;
+        }
+    }
+    HAL_I2SEx_TransmitReceive_DMA(&hi2s3, (uint16_t *)adc_output_buffer, (uint16_t *)&adc_input_buffer[0], RX_BUFFER_SIZE / 2);
+
+    return 0;
+}
+
 void HAL_I2S_ErrorCallback(I2S_HandleTypeDef *hi2s) {
-    //  if (hi2s->Instance == I2S3) {
-    /* Manage the remaining file size and new address offset: This function should
-       be coded by user (its prototype is already declared in stm32f4_discovery_audio.h) */
-    //  BSP_AUDIO_OUT_HalfTransfer_CallBack();
-    //  }
     __asm__("BKPT");
 }
-
-/**
-  * @brief  Rx Transfer completed callbacks
-  * @param  hi2s: I2S handle
-  */
-#if 0
-void HAL_I2S_RxCpltCallback(I2S_HandleTypeDef *hi2s) {
-    /* Call the record update function to get the next buffer to fill and its size (size is ignored) */
-    // if (hi2s->Instance == I2S3) {
-    /* Call the user function which will manage directly transfer complete */
-    // BSP_AUDIO_OUT_TransferComplete_CallBack();
-    external_adc_transmission();
-    // }
-}
-#endif
 
 void HAL_I2S_TxRxCpltCallback(I2S_HandleTypeDef *hi2s) {
-    /* Call the record update function to get the next buffer to fill and its size (size is ignored) */
-    // if (hi2s->Instance == I2S3) {
-    /* Call the user function which will manage directly transfer complete */
-    // BSP_AUDIO_OUT_TransferComplete_CallBack();
-    // external_adc_transmission();
-    // __asm__("BKPT");
-    // }
 }
 
 void HAL_I2SEx_TxRxHalfCpltCallback(I2S_HandleTypeDef *hi2s) {
     /* Prevent unused argument(s) compilation warning */
-    UNUSED(hi2s);
-    // __asm__("BKPT");
-    /* NOTE : This function Should not be modified, when the callback is needed,
-              the HAL_I2SEx_TxRxHalfCpltCallback could be implemented in the user file
-     */
+    static portBASE_TYPE xHigherPriorityTaskWoken;
+    xHigherPriorityTaskWoken = pdFALSE;
+    xSemaphoreGiveFromISR(semaphore_adc_half_buffer_ready, &xHigherPriorityTaskWoken);
+    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 }
-
-#if 0
-/**
-  * @brief  Rx Half Transfer completed callbacks.
-  * @param  hi2s: I2S handle
-  */
-void HAL_I2S_RxHalfCpltCallback(I2S_HandleTypeDef *hi2s) {
-    /* Manage the remaining file size and new address offset: This function
-       should be coded by user (its prototype is already declared in stm32f4_discovery_audio.h) */
-    // if (hi2s->Instance == I2S3) {
-    /* Call the user function which will manage directly transfer complete */
-    // BSP_AUDIO_OUT_TransferComplete_CallBack();
-    // }
-}
-#endif
 
 void taskExternalADC(void *pvParameters) {
 
-    MX_I2S_Init();
+    for (uint i = 0; i < LAST_INDEX_IN_ACQUIRE_ORDER + 1; i++) { // check if there are duplicates. If yes, the data processing beneath wont work
+        for (uint n = i + 1; n < LAST_INDEX_IN_ACQUIRE_ORDER + 1; n++) {
+            assert(ORDER_OF_ACQUISITION[i] != ORDER_OF_ACQUISITION[n]);
+        }
+    }
+
+    ExternalADC_Config();
     I2S3_ClockConfig(&hi2s3, 192);
-    // for (int i = 0; i < adsi_max - 1; i++) {
-    //}
     external_adc_transmission();
+
+    uint16_t read_buffer_start_index = 0;
+    uint32_t write_index = 0;
+    uint32_t sample_time_stamp = 0;
+    int32_t temperatures_avging[3] = {0};
+    int32_t currents_avging[i_COUNT] = {0};
+    int32_t voltages_avging[u_COUNT] = {0};
+
+    const uint16_t AVERAGE_LENGTH_TEMPERATURE = 256;
+    const uint16_t AVERAGE_LENGTH_VOLTAGE = 256;
+    const uint16_t AVERAGE_LENGTH_CURRENT = 256;
+
+    uint64_t currents_effectiving[i_COUNT] = {0};
+    uint64_t voltages_effectiving[u_COUNT] = {0};
+    uint32_t effectiving_n = 0;
+    TickType_t effective_calculation_period_start_ms = xTaskGetTickCount();
+    const TickType_t EFFECTIVE_CALCULATION_PERIOD_LENGTH_ms = 1000 / portTICK_RATE_MS;
+
+    adc_data_record_t data_record[16] = {{0}};
     for (;;) {
-        vTaskDelay(100);
+        if (xSemaphoreTake(semaphore_adc_half_buffer_ready, 100 / portTICK_RATE_MS) == pdTRUE) {
+            SET_LED_YELLOW();
+
+            for (uint16_t i = 0; i < ADC_RECORDS_TO_BUFFER / 2; i++) {
+
+                uint32_t adc_word = adc_input_buffer[read_buffer_start_index + i];
+                ext_adc_raw_channel_t channel_index = (adc_word & 0xF000) >> 12;
+                uint16_t value = adc_word & 0x0FFF;
+
+#if 1
+                assert(channel_index < 16);
+                data_record[channel_index].value = value;
+                data_record[channel_index].time_stamp = sample_time_stamp;
+                (void)data_record;
+#endif
+
+                const ext_adc_raw_channel_t LAST_CHANNEL_IN_ORDER = LAST_CHANNEL_IN_ACQUIRE_ORDER;
+                if (channel_index == LAST_CHANNEL_IN_ACQUIRE_ORDER) { // if we acquired a hole set of data and start with the first channel again
+#if 1
+                    {
+                        static uint8_t led_green_state = 0;
+                        if (led_green_state & 1) {
+                            SET_LED_GREEN();
+                        } else {
+                            CLEAR_LED_GREEN();
+                        }
+                        led_green_state++;
+                    }
+#endif
+
+                    assert(write_index < ADC_RECORDS_TO_BUFFER);
+                    { //
+                        const ext_adc_value_channel_t ci = ext_adc_value_curr_l1;
+                        if (data_record[ext_adc_channel_raw_curr_l1_pos].value > data_record[ext_adc_channel_raw_curr_l1_neg].value) {
+                            adc_channels[ci][write_index].value = data_record[ext_adc_channel_raw_curr_l1_pos].value;
+                            adc_channels[ci][write_index].time_stamp = data_record[ext_adc_channel_raw_curr_l1_pos].time_stamp;
+                        } else {
+                            adc_channels[ci][write_index].value = -data_record[ext_adc_channel_raw_curr_l1_neg].value;
+                            adc_channels[ci][write_index].time_stamp = data_record[ext_adc_channel_raw_curr_l1_neg].time_stamp;
+                        }
+                    }
+
+                    { //
+                        const ext_adc_value_channel_t ci = ext_adc_value_curr_l2;
+                        if (data_record[ext_adc_channel_raw_curr_l2_pos].value > data_record[ext_adc_channel_raw_curr_l2_neg].value) {
+                            adc_channels[ci][write_index].value = data_record[ext_adc_channel_raw_curr_l2_pos].value;
+                            adc_channels[ci][write_index].time_stamp = data_record[ext_adc_channel_raw_curr_l2_pos].time_stamp;
+                        } else {
+                            adc_channels[ci][write_index].value = -data_record[ext_adc_channel_raw_curr_l2_neg].value;
+                            adc_channels[ci][write_index].time_stamp = data_record[ext_adc_channel_raw_curr_l2_neg].time_stamp;
+                        }
+                    }
+                    { //
+                        const ext_adc_value_channel_t ci = ext_adc_value_curr_l3;
+                        if (data_record[ext_adc_channel_raw_curr_l3_pos].value > data_record[ext_adc_channel_raw_curr_l3_neg].value) {
+                            adc_channels[ci][write_index].value = data_record[ext_adc_channel_raw_curr_l3_pos].value;
+                            adc_channels[ci][write_index].time_stamp = data_record[ext_adc_channel_raw_curr_l3_pos].time_stamp;
+                        } else {
+                            adc_channels[ci][write_index].value = -data_record[ext_adc_channel_raw_curr_l3_neg].value;
+                            adc_channels[ci][write_index].time_stamp = data_record[ext_adc_channel_raw_curr_l3_neg].time_stamp;
+                        }
+                    }
+
+                    {
+                        adc_channels[ext_adc_value_volt_l12][write_index].value =
+                            data_record[ext_adc_channel_raw_volt_l12].value - data_record[ext_adc_channel_raw_vref].value;
+                        adc_channels[ext_adc_value_volt_l12][write_index].time_stamp = data_record[ext_adc_channel_raw_volt_l12].time_stamp;
+
+                        adc_channels[ext_adc_value_volt_l23][write_index].value =
+                            data_record[ext_adc_channel_raw_volt_l23].value - data_record[ext_adc_channel_raw_vref].value;
+                        adc_channels[ext_adc_value_volt_l23][write_index].time_stamp = data_record[ext_adc_channel_raw_volt_l23].time_stamp;
+
+                        adc_channels[ext_adc_value_volt_l31][write_index].value =
+                            data_record[ext_adc_channel_raw_volt_l31].value - data_record[ext_adc_channel_raw_vref].value;
+                        adc_channels[ext_adc_value_volt_l31][write_index].time_stamp = data_record[ext_adc_channel_raw_volt_l31].time_stamp;
+                    }
+
+                    {
+                        adc_channels[ext_adc_value_aux_volt][write_index].value = data_record[ext_adc_channel_raw_aux_volt].value;
+                        adc_channels[ext_adc_value_aux_volt][write_index].time_stamp = data_record[ext_adc_channel_raw_aux_volt].time_stamp;
+                        adc_channels[ext_adc_value_temp_l1][write_index].value = data_record[ext_adc_value_temp_l1].value;
+                        adc_channels[ext_adc_value_temp_l1][write_index].time_stamp = data_record[ext_adc_value_temp_l1].time_stamp;
+                        adc_channels[ext_adc_value_temp_l2][write_index].value = data_record[ext_adc_value_temp_l2].value;
+                        adc_channels[ext_adc_value_temp_l2][write_index].time_stamp = data_record[ext_adc_value_temp_l2].time_stamp;
+                        adc_channels[ext_adc_value_temp_l3][write_index].value = data_record[ext_adc_value_temp_l3].value;
+                        adc_channels[ext_adc_value_temp_l3][write_index].time_stamp = data_record[ext_adc_value_temp_l3].time_stamp;
+                        adc_channels[ext_adc_value_vref][write_index].value = data_record[ext_adc_value_vref].value;
+                        adc_channels[ext_adc_value_vref][write_index].time_stamp = data_record[ext_adc_value_vref].time_stamp;
+                    }
+
+                    temperatures_avging[0] += adc_channels[ext_adc_value_temp_l1][write_index].value;
+                    temperatures_avging[1] += adc_channels[ext_adc_value_temp_l2][write_index].value;
+                    temperatures_avging[2] += adc_channels[ext_adc_value_temp_l3][write_index].value;
+
+                    currents_avging[i_l1] += adc_channels[ext_adc_value_curr_l1][write_index].value;
+                    currents_avging[i_l2] += adc_channels[ext_adc_value_curr_l2][write_index].value;
+                    currents_avging[i_l3] += adc_channels[ext_adc_value_curr_l3][write_index].value;
+
+                    voltages_avging[u_l12] += adc_channels[ext_adc_value_volt_l12][write_index].value;
+                    voltages_avging[u_l23] += adc_channels[ext_adc_value_volt_l23][write_index].value;
+                    voltages_avging[u_l31] += adc_channels[ext_adc_value_volt_l31][write_index].value;
+                    voltages_avging[u_aux] += adc_channels[ext_adc_value_aux_volt][write_index].value;
+
+                    for (int i = 0; i < 3; i++) {
+                        temparatures_average[i] = temperatures_avging[i] / AVERAGE_LENGTH_TEMPERATURE;
+                        temperatures_avging[i] -= temparatures_average[i];
+                    }
+
+                    for (int i = 0; i < i_COUNT; i++) {
+                        power_currents_average[i] = currents_avging[i] / AVERAGE_LENGTH_CURRENT;
+                        currents_avging[i] -= power_currents_average[i];
+                    }
+
+                    for (int i = 0; i < u_COUNT; i++) {
+                        power_voltages_average[i] = voltages_avging[i] / AVERAGE_LENGTH_CURRENT;
+                        voltages_avging[i] -= power_voltages_average[i];
+                    }
+
+                    currents_effectiving[i_l1] +=
+                        adc_channels[ext_adc_value_curr_l1][write_index].value * adc_channels[ext_adc_value_curr_l1][write_index].value;
+                    currents_effectiving[i_l2] +=
+                        adc_channels[ext_adc_value_curr_l2][write_index].value * adc_channels[ext_adc_value_curr_l2][write_index].value;
+                    currents_effectiving[i_l3] +=
+                        adc_channels[ext_adc_value_curr_l3][write_index].value * adc_channels[ext_adc_value_curr_l3][write_index].value;
+
+                    voltages_effectiving[u_l12] +=
+                        adc_channels[ext_adc_value_volt_l12][write_index].value * adc_channels[ext_adc_value_volt_l12][write_index].value;
+                    voltages_effectiving[u_l23] +=
+                        adc_channels[ext_adc_value_volt_l23][write_index].value * adc_channels[ext_adc_value_volt_l23][write_index].value;
+                    voltages_effectiving[u_l31] +=
+                        adc_channels[ext_adc_value_volt_l31][write_index].value * adc_channels[ext_adc_value_volt_l31][write_index].value;
+                    assert(voltages_effectiving[u_l12] < ((uint64_t)1 << 50));
+
+                    effectiving_n++;
+                    if (effective_calculation_period_start_ms + EFFECTIVE_CALCULATION_PERIOD_LENGTH_ms < xTaskGetTickCount()) {
+
+                        for (int i = 0; i < 3; i++) {
+                            //
+                            assert(effectiving_n);
+                            currents_effectiving[i] /= effectiving_n;
+
+                            power_currents_effective[i] = round(sqrt(currents_effectiving[i]));
+                            currents_effectiving[i] = 0;
+                        }
+                        for (int i = 0; i < 3; i++) {
+                            voltages_effectiving[i] /= effectiving_n;
+                            power_voltages_effective[i] = round(sqrt(voltages_effectiving[i]));
+                            voltages_effectiving[i] = 0;
+                        }
+                        //__asm__("BKPT");
+                        effective_calculation_period_start_ms = xTaskGetTickCount();
+                        effectiving_n = 0;
+                    }
+
+                    write_index++;
+                }
+                sample_time_stamp++;
+            }
+
+            write_index = 0;
+            read_buffer_start_index += ADC_RECORDS_TO_BUFFER / 2;
+            if (read_buffer_start_index >= ADC_RECORDS_TO_BUFFER) {
+                read_buffer_start_index = 0;
+            }
+            CLEAR_LED_YELLOW();
+        }
     }
 }

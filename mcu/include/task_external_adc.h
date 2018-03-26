@@ -21,5 +21,35 @@
 
 #include "board.h"
 
+typedef enum {
+    ext_adc_value_curr_l1,
+    ext_adc_value_curr_l2,
+    ext_adc_value_curr_l3,
+
+    ext_adc_value_vref,
+
+    ext_adc_value_volt_l12,
+    ext_adc_value_volt_l23,
+    ext_adc_value_volt_l31,
+
+    ext_adc_value_aux_volt,
+
+    ext_adc_value_temp_l1,
+    ext_adc_value_temp_l2,
+    ext_adc_value_temp_l3,
+    ext_adc_value_COUNT
+} ext_adc_value_channel_t;
+
+typedef struct { int16_t l1, l2, l3; } ext_adc_temperatures_t;
+
+typedef enum { i_l1, i_l2, i_l3, i_COUNT } current_index_t;
+typedef enum { u_l12, u_l23, u_l31, u_aux, u_COUNT } voltage_index_t;
+
+void extadc_get_voltages_avg(int16_t avg[u_COUNT]);
+void extadc_get_voltages_effective(uint16_t eff[3]);
+
+void extadc_get_currents_avg(int16_t avg[i_COUNT]);
+void extadc_get_currents_effective(uint16_t eff[i_COUNT]);
+
 void taskExternalADC(void *pvParameters);
 #endif /* MCU_INCLUDE_TASK_ADC_H_ */

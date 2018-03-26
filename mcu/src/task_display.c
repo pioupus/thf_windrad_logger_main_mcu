@@ -7,6 +7,7 @@
 
 #include "hd44780.h"
 #include "task_display.h"
+#include "task_external_adc.h"
 #include <assert.h>
 #include "vc.h"
 
@@ -25,9 +26,9 @@ typedef struct {
 
 static void display_screen_iup_background() {
     lcd_putc('\f');
-    lcd_printf_at(TABLE_3_COL_1, 0, "I");
-    lcd_printf_at(TABLE_3_COL_2, 0, "U");
-    lcd_printf_at(TABLE_3_COL_3, 0, "P");
+    lcd_printf_at(TABLE_3_COL_1, 0, "Uavg");
+    lcd_printf_at(TABLE_3_COL_2, 0, "Iavg");
+    lcd_printf_at(TABLE_3_COL_3, 0, "Ieff");
     lcd_printf_at(0, 1, "L1");
     lcd_printf_at(0, 2, "L2");
     lcd_printf_at(0, 3, "L3");
@@ -35,15 +36,44 @@ static void display_screen_iup_background() {
 
 static void display_screen_iup_update() {
     static uint8_t i;
+
+    int16_t u_avg[u_COUNT] = {0};
+    uint16_t u_eff[3] = {0};
+    int16_t i_avg[i_COUNT] = {0};
+    uint16_t i_eff[i_COUNT] = {0};
+
+    extadc_get_voltages_avg(u_avg);
+    extadc_get_voltages_effective(u_eff);
+
+    extadc_get_currents_avg(i_avg);
+    extadc_get_currents_effective(i_eff);
+
     lcd_printf_at(TABLE_3_COL_1, 1, "    ");
-    lcd_printf_at(TABLE_3_COL_1, 1, "%d", i);
+    lcd_printf_at(TABLE_3_COL_1, 1, "%d", u_avg[u_l12]);
+
+    lcd_printf_at(TABLE_3_COL_1, 2, "    ");
+    lcd_printf_at(TABLE_3_COL_1, 2, "%d", u_avg[u_l23]);
+
+    lcd_printf_at(TABLE_3_COL_1, 3, "    ");
+    lcd_printf_at(TABLE_3_COL_1, 3, "%d", u_avg[u_l31]);
 
     lcd_printf_at(TABLE_3_COL_2, 1, "    ");
-    lcd_printf_at(TABLE_3_COL_2, 1, "%d", i);
+    lcd_printf_at(TABLE_3_COL_2, 1, "%d", i_avg[i_l1]);
+
+    lcd_printf_at(TABLE_3_COL_2, 2, "    ");
+    lcd_printf_at(TABLE_3_COL_2, 2, "%d", i_avg[i_l2]);
+
+    lcd_printf_at(TABLE_3_COL_2, 3, "    ");
+    lcd_printf_at(TABLE_3_COL_2, 3, "%d", i_avg[i_l3]);
 
     lcd_printf_at(TABLE_3_COL_3, 1, "    ");
-    lcd_printf_at(TABLE_3_COL_3, 1, "%d", i);
-    i++;
+    lcd_printf_at(TABLE_3_COL_3, 1, "%d", i_eff[i_l1]);
+
+    lcd_printf_at(TABLE_3_COL_3, 2, "    ");
+    lcd_printf_at(TABLE_3_COL_3, 2, "%d", i_eff[i_l2]);
+
+    lcd_printf_at(TABLE_3_COL_3, 3, "    ");
+    lcd_printf_at(TABLE_3_COL_3, 3, "%d", i_eff[i_l3]);
 }
 
 static void display_screen_boot_background() {
@@ -63,7 +93,7 @@ const screen_description_t screen_instruction_table[] = {
      .update_interval_ms = 5000,
      .paint_function = &display_screen_boot_background,
      .update_function = &display_screen_boot_update},
-    {.id = screen_iup, .update_interval_ms = 5000, .paint_function = &display_screen_iup_background, .update_function = &display_screen_iup_update} //
+    {.id = screen_iup, .update_interval_ms = 1000, .paint_function = &display_screen_iup_background, .update_function = &display_screen_iup_update} //
 };
 
 void display_set_screen(screen_id_t new_screen_id) {
