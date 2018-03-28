@@ -27,7 +27,7 @@
 #include "main.h"
 #include "serial.h"
 
-#define CHANNEL_CODEC_TX_BUFFER_SIZE 64
+#define CHANNEL_CODEC_TX_BUFFER_SIZE 300
 #define CHANNEL_CODEC_RX_BUFFER_SIZE 64
 
 static char cc_rxBuffers[channel_codec_comport_COUNT][CHANNEL_CODEC_RX_BUFFER_SIZE];

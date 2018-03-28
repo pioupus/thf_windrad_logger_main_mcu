@@ -14,8 +14,6 @@ ADC_HandleTypeDef hadc;
 
 I2C_HandleTypeDef hi2c2;
 
-RTC_HandleTypeDef hrtc;
-
 I2S_HandleTypeDef hi2s3;
 I2S_HandleTypeDef hi2s3_ext;
 
@@ -27,11 +25,16 @@ USART_HandleTypeDef husart3;
 // systick initialization must be done by freertos
 
 void SystemClock_Config(void) {
-    RCC_ClkInitTypeDef RCC_ClkInitStruct;
-    RCC_OscInitTypeDef RCC_OscInitStruct;
+    RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
+    RCC_OscInitTypeDef RCC_OscInitStruct = {0};
+    RCC_PeriphCLKInitTypeDef PeriphClkInitStruct = {0};
 
     /* Enable Power Control clock */
     __HAL_RCC_PWR_CLK_ENABLE();
+
+    // Reset Backup domain
+    __HAL_RCC_BACKUPRESET_FORCE();
+    __HAL_RCC_BACKUPRESET_RELEASE();
 
     /* The voltage scaling allows optimizing the power consumption when the device is
        clocked below the maximum system frequency, to update the voltage scaling value
@@ -49,6 +52,20 @@ void SystemClock_Config(void) {
     RCC_OscInitStruct.PLL.PLLQ = 7;
     HAL_RCC_OscConfig(&RCC_OscInitStruct);
 
+    // Enable LSE Oscillator
+    RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_LSE;
+    RCC_OscInitStruct.PLL.PLLState = RCC_PLL_NONE; // Mandatory, otherwise the PLL is reconfigured!
+    RCC_OscInitStruct.LSEState = RCC_LSE_ON;       // External 32.768 kHz clock on OSC_IN/OSC_OUT
+    RCC_OscInitStruct.LSIState = RCC_LSI_OFF;
+    if (HAL_RCC_OscConfig(&RCC_OscInitStruct) == HAL_OK) { // Check if LSE has started correctly
+        // Connect LSE to RTC
+        PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_RTC;
+        PeriphClkInitStruct.RTCClockSelection = RCC_RTCCLKSOURCE_LSE;
+        HAL_RCCEx_PeriphCLKConfig(&PeriphClkInitStruct);
+    } else {
+        // error("RTC error: LSE clock initialization failed.");
+    }
+
     /* Select PLL as system clock source and configure the HCLK, PCLK1 and PCLK2
        clocks dividers */
     RCC_ClkInitStruct.ClockType = (RCC_CLOCKTYPE_SYSCLK | RCC_CLOCKTYPE_HCLK | RCC_CLOCKTYPE_PCLK1 | RCC_CLOCKTYPE_PCLK2);
@@ -63,6 +80,9 @@ void SystemClock_Config(void) {
         /* Enable the Flash prefetch */
         __HAL_FLASH_PREFETCH_BUFFER_ENABLE();
     }
+
+    // Enable RTC
+    __HAL_RCC_RTC_ENABLE();
 }
 
 /* ADC init function */
@@ -114,35 +134,7 @@ void MX_I2C2_Init(void) {
 /* RTC init function */
 void MX_RTC_Init(void) {
 
-    RTC_TimeTypeDef sTime;
-    RTC_DateTypeDef sDate;
-
-    /**Initialize RTC and set the Time and Date
-    */
-    hrtc.Instance = RTC;
-    hrtc.Init.HourFormat = RTC_HOURFORMAT_24;
-    hrtc.Init.AsynchPrediv = 127;
-    hrtc.Init.SynchPrediv = 255;
-    hrtc.Init.OutPut = RTC_OUTPUT_DISABLE;
-    hrtc.Init.OutPutPolarity = RTC_OUTPUT_POLARITY_HIGH;
-    hrtc.Init.OutPutType = RTC_OUTPUT_TYPE_OPENDRAIN;
-    HAL_RTC_Init(&hrtc);
-
-    sTime.Hours = 0x0;
-    sTime.Minutes = 0x0;
-    sTime.Seconds = 0x0;
-    sTime.DayLightSaving = RTC_DAYLIGHTSAVING_NONE;
-    sTime.StoreOperation = RTC_STOREOPERATION_RESET;
-    HAL_RTC_SetTime(&hrtc, &sTime, RTC_FORMAT_BCD);
-
-    sDate.WeekDay = RTC_WEEKDAY_MONDAY;
-    sDate.Month = RTC_MONTH_JANUARY;
-    sDate.Date = 0x1;
-    sDate.Year = 0x0;
-
-    HAL_RTC_SetDate(&hrtc, &sDate, RTC_FORMAT_BCD);
-
     /**Enable the WakeUp
     */
-    HAL_RTCEx_SetWakeUpTimer(&hrtc, 0, RTC_WAKEUPCLOCK_RTCCLK_DIV16);
+    // HAL_RTCEx_SetWakeUpTimer(&hrtc, 0, RTC_WAKEUPCLOCK_RTCCLK_DIV16);
 }

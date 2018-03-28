@@ -27,6 +27,7 @@
 #include "serial.h"
 
 #include "task_adc.h"
+#include "rtc_stdlib.h"
 #include "task_external_adc.h"
 #include "task_key.h"
 #include "task_led.h"
@@ -73,6 +74,27 @@ void RTC_SetToDefaulDate(void) {
 
     HAL_RTC_SetDate(&hrtc, &sDate, RTC_FORMAT_BCD);
 }
+
+#if 0
+void main_set_date_time(uint16_t year, uint8_t month, uint8_t day, uint8_t hour, uint8_t min, uint8_t sec) {
+    RTC_TimeTypeDef sTime;
+    RTC_DateTypeDef sDate;
+
+    sTime.Hours = hour;
+    sTime.Minutes = min;
+    sTime.Seconds = sec;
+    sTime.DayLightSaving = RTC_DAYLIGHTSAVING_NONE;
+    sTime.StoreOperation = RTC_STOREOPERATION_SET;
+    HAL_RTC_SetTime(&hrtc, &sTime, RTC_FORMAT_BIN);
+
+    sDate.WeekDay = 0;
+    sDate.Month = month;
+    sDate.Date = day;
+    sDate.Year = year;
+
+    HAL_RTC_SetDate(&hrtc, &sDate, RTC_FORMAT_BIN);
+}
+#endif
 
 void mainBackup_SetLEDStatus(uint32_t ledStatus) {
     HAL_RTCEx_BKUPWrite(&hrtc, RTC_BKP_DR0, ledStatus);
@@ -252,6 +274,7 @@ int main(void) {
     HAL_RCC_GetPCLK1Freq();
     HAL_RCC_GetPCLK2Freq();
     HAL_Init();
+    rtc_init();
     boardConfigurePIO();
 
     // CLEAR_SHUTDOWN();

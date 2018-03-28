@@ -36,7 +36,6 @@ const uint16_t ADS_CTR_REG_GPIO_OUTPUT = 0x000F;
 
 #define CHANNEL_COUNT 14
 #define ADC_WORD_SIZE 2
-#define ADC_RECORDS_TO_BUFFER 128
 
 #define RX_BUFFER_SIZE ADC_RECORDS_TO_BUFFER *CHANNEL_COUNT *ADC_WORD_SIZE
 #define TX_BUFFER_SIZE ADC_RECORDS_TO_BUFFER *CHANNEL_COUNT *ADC_WORD_SIZE
@@ -51,6 +50,8 @@ typedef struct {
 
 adc_data_record_t adc_channels[ext_adc_value_COUNT][ADC_RECORDS_TO_BUFFER];
 
+adc_data_record_t adc_channels_complete[ext_adc_value_COUNT][ADC_RECORDS_TO_BUFFER];
+
 static int16_t power_currents_average[i_COUNT];
 static uint16_t power_currents_effective[i_COUNT];
 
@@ -63,8 +64,8 @@ const ext_adc_raw_channel_t ORDER_OF_ACQUISITION[] = {
 #if 1
     ext_adc_channel_raw_curr_l1_neg, ext_adc_channel_raw_curr_l1_pos, ext_adc_channel_raw_curr_l2_pos, ext_adc_channel_raw_curr_l2_neg,
     ext_adc_channel_raw_curr_l3_pos, ext_adc_channel_raw_curr_l3_neg, ext_adc_channel_raw_vref,        ext_adc_channel_raw_volt_l12,
-    ext_adc_channel_raw_volt_l23,    ext_adc_channel_raw_volt_l31,    ext_adc_channel_raw_aux_volt,    ext_adc_channel_raw_temp_l1,
-    ext_adc_channel_raw_temp_l2,     ext_adc_channel_raw_temp_l3
+    ext_adc_channel_raw_volt_l23,    ext_adc_channel_raw_volt_l31,    ext_adc_channel_raw_temp_l1,     ext_adc_channel_raw_temp_l2,
+    ext_adc_channel_raw_temp_l3,     ext_adc_channel_raw_aux_volt
 #endif
 };
 
@@ -73,6 +74,22 @@ const ext_adc_raw_channel_t ORDER_OF_ACQUISITION[] = {
 #define LAST_CHANNEL_IN_ACQUIRE_ORDER ORDER_OF_ACQUISITION[LAST_INDEX_IN_ACQUIRE_ORDER]
 
 static SemaphoreHandle_t semaphore_adc_half_buffer_ready;
+
+static void I2S3_ClockConfig(I2S_HandleTypeDef *hi2s, uint32_t AudioFreq) {
+    RCC_PeriphCLKInitTypeDef rccclkinit;
+
+    /*Enable PLLI2S clock*/
+    HAL_RCCEx_GetPeriphCLKConfig(&rccclkinit);
+    /* PLLI2S_VCO Input = HSE_VALUE/PLL_M = 1 Mhz */
+
+    /* Audio frequency multiple of 8 (8/16/32/48/96/192)*/
+    /* PLLI2S_VCO Output = PLLI2S_VCO Input * PLLI2SN = 192 Mhz */
+    /* I2SCLK = PLLI2S_VCO Output/PLLI2SR = 192/6 = 32 Mhz */
+    rccclkinit.PeriphClockSelection = RCC_PERIPHCLK_I2S;
+    rccclkinit.PLLI2S.PLLI2SN = 256;
+    rccclkinit.PLLI2S.PLLI2SR = 1;
+    HAL_RCCEx_PeriphCLKConfig(&rccclkinit);
+}
 
 static void I2S3_MspInit(void) {
     static DMA_HandleTypeDef hdma_i2sTx;
@@ -104,7 +121,6 @@ static void I2S3_MspInit(void) {
     HAL_DMA_Init(&hdma_i2sTx);
     __HAL_LINKDMA(&hi2s3, hdmatx, hdma_i2sTx);
 
-#if 1
     hdma_i2sRx.Init.Channel = DMA_CHANNEL_2;
     hdma_i2sRx.Init.Direction = DMA_PERIPH_TO_MEMORY;
     hdma_i2sRx.Init.PeriphInc = DMA_PINC_DISABLE;
@@ -120,8 +136,7 @@ static void I2S3_MspInit(void) {
     /* Configure the DMA Stream */
     HAL_DMA_Init(&hdma_i2sRx);
     __HAL_LINKDMA(&hi2s3, hdmarx, hdma_i2sRx);
-//  }
-#endif
+
     /* I2S DMA IRQ Channel configuration */
     HAL_NVIC_SetPriority(DMA1_Stream5_IRQn, ISR_PRIORITY_EXT_ADC_TX, 0);
     HAL_NVIC_SetPriority(DMA1_Stream2_IRQn, ISR_PRIORITY_EXT_ADC_RX, 0);
@@ -138,7 +153,7 @@ static void MX_I2S_Init_DMA(void) {
     hi2s3.Init.Standard = I2S_STANDARD_PCM_SHORT;
     hi2s3.Init.DataFormat = I2S_DATAFORMAT_32B;
     hi2s3.Init.MCLKOutput = I2S_MCLKOUTPUT_DISABLE;
-    hi2s3.Init.AudioFreq = I2S_AUDIOFREQ_192K;
+    hi2s3.Init.AudioFreq = 700000U; // I2S_AUDIOFREQ_192K; // 500000U;
     hi2s3.Init.CPOL = I2S_CPOL_LOW;
     hi2s3.Init.ClockSource = I2S_CLOCK_PLL;
     hi2s3.Init.FullDuplexMode = I2S_FULLDUPLEXMODE_ENABLE;
@@ -205,20 +220,12 @@ void extadc_get_currents_effective(uint16_t eff[i_COUNT]) {
     portEXIT_CRITICAL();
 }
 
-void I2S3_ClockConfig(I2S_HandleTypeDef *hi2s, uint32_t AudioFreq) {
-    RCC_PeriphCLKInitTypeDef rccclkinit;
-
-    /*Enable PLLI2S clock*/
-    HAL_RCCEx_GetPeriphCLKConfig(&rccclkinit);
-    /* PLLI2S_VCO Input = HSE_VALUE/PLL_M = 1 Mhz */
-
-    /* Audio frequency multiple of 8 (8/16/32/48/96/192)*/
-    /* PLLI2S_VCO Output = PLLI2S_VCO Input * PLLI2SN = 192 Mhz */
-    /* I2SCLK = PLLI2S_VCO Output/PLLI2SR = 192/6 = 32 Mhz */
-    rccclkinit.PeriphClockSelection = RCC_PERIPHCLK_I2S;
-    rccclkinit.PLLI2S.PLLI2SN = 256;
-    rccclkinit.PLLI2S.PLLI2SR = 1;
-    HAL_RCCEx_PeriphCLKConfig(&rccclkinit);
+void extadc_get_sample_data(int16_t samples[ADC_RECORDS_TO_BUFFER], const ext_adc_value_channel_t channel) {
+    portENTER_CRITICAL();
+    for (uint i = 0; i < ADC_RECORDS_TO_BUFFER; i++) {
+        samples[i] = adc_channels_complete[channel][i].value;
+    }
+    portEXIT_CRITICAL();
 }
 
 uint8_t external_adc_transmission() {
@@ -228,6 +235,7 @@ uint8_t external_adc_transmission() {
 #if 1
     MX_I2S_Init_poll();
     adc_output_buffer[0] = ADS_CTR_REG | ADS_CTR_REG_RESET | ADS_CTR_REG_GPIO_OUTPUT;
+    adc_output_buffer[1] = 0;
     HAL_I2S_Transmit(&hi2s3, (uint16_t *)adc_output_buffer, 1, 100); // reset ADS Chip
     vTaskDelay((50 / portTICK_RATE_MS));
 #endif
@@ -372,14 +380,15 @@ void taskExternalADC(void *pvParameters) {
                     {
                         adc_channels[ext_adc_value_aux_volt][write_index].value = data_record[ext_adc_channel_raw_aux_volt].value;
                         adc_channels[ext_adc_value_aux_volt][write_index].time_stamp = data_record[ext_adc_channel_raw_aux_volt].time_stamp;
-                        adc_channels[ext_adc_value_temp_l1][write_index].value = data_record[ext_adc_value_temp_l1].value;
-                        adc_channels[ext_adc_value_temp_l1][write_index].time_stamp = data_record[ext_adc_value_temp_l1].time_stamp;
-                        adc_channels[ext_adc_value_temp_l2][write_index].value = data_record[ext_adc_value_temp_l2].value;
-                        adc_channels[ext_adc_value_temp_l2][write_index].time_stamp = data_record[ext_adc_value_temp_l2].time_stamp;
-                        adc_channels[ext_adc_value_temp_l3][write_index].value = data_record[ext_adc_value_temp_l3].value;
-                        adc_channels[ext_adc_value_temp_l3][write_index].time_stamp = data_record[ext_adc_value_temp_l3].time_stamp;
-                        adc_channels[ext_adc_value_vref][write_index].value = data_record[ext_adc_value_vref].value;
-                        adc_channels[ext_adc_value_vref][write_index].time_stamp = data_record[ext_adc_value_vref].time_stamp;
+                        adc_channels[ext_adc_value_temp_l1][write_index].value = data_record[ext_adc_channel_raw_temp_l1].value;
+                        adc_channels[ext_adc_value_temp_l1][write_index].time_stamp = data_record[ext_adc_channel_raw_temp_l1].time_stamp;
+                        adc_channels[ext_adc_value_temp_l2][write_index].value = data_record[ext_adc_channel_raw_temp_l2].value;
+                        adc_channels[ext_adc_value_temp_l2][write_index].time_stamp = data_record[ext_adc_channel_raw_temp_l2].time_stamp;
+                        adc_channels[ext_adc_value_temp_l3][write_index].value = data_record[ext_adc_channel_raw_temp_l3].value;
+                        adc_channels[ext_adc_value_temp_l3][write_index].time_stamp = data_record[ext_adc_channel_raw_temp_l3].time_stamp;
+
+                        adc_channels[ext_adc_value_vref][write_index].value = data_record[ext_adc_channel_raw_vref].value;
+                        adc_channels[ext_adc_value_vref][write_index].time_stamp = data_record[ext_adc_channel_raw_vref].time_stamp;
                     }
 
                     temperatures_avging[0] += adc_channels[ext_adc_value_temp_l1][write_index].value;
@@ -447,11 +456,16 @@ void taskExternalADC(void *pvParameters) {
                     }
 
                     write_index++;
+                    if (write_index >= ADC_RECORDS_TO_BUFFER) {
+                        write_index = 0;
+                        portENTER_CRITICAL();
+                        memcpy(adc_channels_complete, adc_channels, sizeof(adc_channels));
+                        portEXIT_CRITICAL();
+                    }
                 }
                 sample_time_stamp++;
             }
 
-            write_index = 0;
             read_buffer_start_index += ADC_RECORDS_TO_BUFFER / 2;
             if (read_buffer_start_index >= ADC_RECORDS_TO_BUFFER) {
                 read_buffer_start_index = 0;

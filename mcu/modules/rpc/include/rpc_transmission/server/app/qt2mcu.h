@@ -7,16 +7,28 @@ extern "C" {
 
 typedef enum { rpcLEDStatus_none, rpcLEDStatus_off, rpcLEDStatus_on } rpcLEDStatus_t;
 
-#pragma RPC noanswer mcuSendDataNoAnswer
-void mcuSendDataNoAnswer(uint8_t data);
+//#pragma RPC noanswer mcuSendDataNoAnswer
+// void mcuSendDataNoAnswer(uint8_t data);
 
-uint16_t mcuSetLEDStatus(rpcLEDStatus_t ledStatus);
+// uint16_t mcuSetLEDStatus(rpcLEDStatus_t ledStatus);
 
-typedef struct {
-    uint32_t temperature_c;
-    uint32_t vcc_mv;
-    uint32_t running_number;
-} adc_values_t;
+typedef enum {
+    adc_sample_channel_curr_l1,
+    adc_sample_channel_curr_l2,
+    adc_sample_channel_curr_l3,
+
+    adc_sample_channel_vref,
+
+    adc_sample_channel_volt_l12,
+    adc_sample_channel_volt_l23,
+    adc_sample_channel_volt_l31,
+
+    adc_sample_channel_aux_volt,
+
+    adc_sample_channel_temp_l1,
+    adc_sample_channel_temp_l2,
+    adc_sample_channel_temp_l3
+} adc_sample_channel_t;
 
 typedef struct {
     uint32_t githash;
@@ -29,19 +41,12 @@ typedef struct {
     char version[8];
 } device_descriptor_t;
 
-adc_values_t get_adc_values();
+void get_sample_data(int16_t samples_out[128], adc_sample_channel_t channel);
+
+void set_unix_date_time(uint32_t unix_date_time);
+uint32_t get_unix_date_time(void);
 
 device_descriptor_t get_device_descriptor(void);
-
-typedef struct {
-    uint32_t running_number;
-    char name[15];
-    char version[8];
-} test_struct_t;
-
-void test_function_param(uint8_t param8, uint32_t param32);
-
-void test_function_struct(test_struct_t param8_inout[1], test_struct_t param32_inout[1]);
 
 #ifdef __cplusplus
 }

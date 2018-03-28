@@ -10,6 +10,7 @@
 #include "task_external_adc.h"
 #include <assert.h>
 #include "vc.h"
+#include <time.h>
 
 const uint8_t TABLE_3_COL_1 = 5;
 const uint8_t TABLE_3_COL_2 = 10;
@@ -48,32 +49,38 @@ static void display_screen_iup_update() {
     extadc_get_currents_avg(i_avg);
     extadc_get_currents_effective(i_eff);
 
-    lcd_printf_at(TABLE_3_COL_1, 1, "    ");
+    lcd_printf_at(TABLE_3_COL_1, 1, "     ");
     lcd_printf_at(TABLE_3_COL_1, 1, "%d", u_avg[u_l12]);
 
-    lcd_printf_at(TABLE_3_COL_1, 2, "    ");
+    lcd_printf_at(TABLE_3_COL_1, 2, "     ");
     lcd_printf_at(TABLE_3_COL_1, 2, "%d", u_avg[u_l23]);
 
-    lcd_printf_at(TABLE_3_COL_1, 3, "    ");
+    lcd_printf_at(TABLE_3_COL_1, 3, "     ");
     lcd_printf_at(TABLE_3_COL_1, 3, "%d", u_avg[u_l31]);
 
-    lcd_printf_at(TABLE_3_COL_2, 1, "    ");
+    lcd_printf_at(TABLE_3_COL_2, 1, "     ");
     lcd_printf_at(TABLE_3_COL_2, 1, "%d", i_avg[i_l1]);
 
-    lcd_printf_at(TABLE_3_COL_2, 2, "    ");
+    lcd_printf_at(TABLE_3_COL_2, 2, "     ");
     lcd_printf_at(TABLE_3_COL_2, 2, "%d", i_avg[i_l2]);
 
-    lcd_printf_at(TABLE_3_COL_2, 3, "    ");
+    lcd_printf_at(TABLE_3_COL_2, 3, "     ");
     lcd_printf_at(TABLE_3_COL_2, 3, "%d", i_avg[i_l3]);
 
-    lcd_printf_at(TABLE_3_COL_3, 1, "    ");
+    lcd_printf_at(TABLE_3_COL_3, 1, "     ");
     lcd_printf_at(TABLE_3_COL_3, 1, "%d", i_eff[i_l1]);
 
-    lcd_printf_at(TABLE_3_COL_3, 2, "    ");
+    lcd_printf_at(TABLE_3_COL_3, 2, "     ");
     lcd_printf_at(TABLE_3_COL_3, 2, "%d", i_eff[i_l2]);
 
-    lcd_printf_at(TABLE_3_COL_3, 3, "    ");
+    lcd_printf_at(TABLE_3_COL_3, 3, "     ");
     lcd_printf_at(TABLE_3_COL_3, 3, "%d", i_eff[i_l3]);
+
+    time_t t = time(0);
+    struct tm printTm = *(localtime(&t));
+    char buffer[20] = {0};
+    strftime(buffer, 20, "%m/%d/%y %H:%M:%S", &printTm);
+    lcd_printf_at(0, 3, "%s\r\n", buffer);
 }
 
 static void display_screen_boot_background() {

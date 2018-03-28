@@ -8,6 +8,8 @@
 #include "../../../include/rpc_transmission/server/app/qt2mcu.h"
 #include "board.h"
 #include "vc.h"
+#include "task_external_adc.h"
+#include "rtc_stdlib.h"
 
 device_descriptor_t get_device_descriptor(void) {
     device_descriptor_t retval = {.name = "THF_LOGGER", .version = "0.1"};
@@ -17,40 +19,14 @@ device_descriptor_t get_device_descriptor(void) {
     return retval;
 }
 
-adc_values_t get_adc_values() {
-    static uint32_t running_val_ = 0;
-    adc_values_t retval = {0};
-    retval.temperature_c = 45;
-    retval.vcc_mv = 5500;
-    retval.running_number = running_val_++;
-    return retval;
+void get_sample_data(int16_t samples_out[128], adc_sample_channel_t channel) {
+    extadc_get_sample_data(samples_out, channel);
 }
 
-void mcuSendDataNoAnswer(uint8_t data) {
+void set_unix_date_time(uint32_t unix_date_time) {
+    rtc_set_date_time(unix_date_time);
 }
 
-uint16_t mcuSetLEDStatus(rpcLEDStatus_t ledStatus) {
-
-    static uint16_t returnvalue = 0;
-    returnvalue++;
-    switch (ledStatus) {
-        case rpcLEDStatus_off:
-            CLEAR_LED_RED();
-            break;
-        case rpcLEDStatus_on:
-            SET_LED_RED();
-            break;
-        case rpcLEDStatus_none:
-            break;
-    }
-
-    return returnvalue;
-}
-
-void test_function_param(uint8_t param8, uint32_t param32) {
-}
-
-void test_function_struct(test_struct_t param8_inout[1], test_struct_t param32_inout[1]) {
-    param32_inout->running_number++;
-    param8_inout++;
+uint32_t get_unix_date_time(void) {
+    return time(NULL);
 }

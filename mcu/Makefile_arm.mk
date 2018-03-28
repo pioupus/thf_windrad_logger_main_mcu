@@ -40,6 +40,7 @@ SOURCES += $(SRC)/task_rpc_serial_in.c
 SOURCES += $(SRC)/syscalls.c
 SOURCES += $(LIBRARIES)/serial.c
 SOURCES += $(SRC)/chip_init.c
+SOURCES += $(SRC)/rtc_stdlib.c
 SOURCES += $(SRC)/stm32f4xx_it.c
 SOURCES += $(SRC)/stm32f4xx_hal_msp.c
 SOURCES += $(SRC)/stm32f4xx_hal_timebase_TIM.c

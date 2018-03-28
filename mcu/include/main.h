@@ -25,7 +25,7 @@
 
 #define mainLED_TASK_STACK ((unsigned short)550)
 #define mainKEY_TASK_STACK ((unsigned short)300)
-#define mainRPC_SERIAL_TASK_STACK ((unsigned short)300)
+#define mainRPC_SERIAL_TASK_STACK ((unsigned short)550)
 #define mainADC_TASK_STACK ((unsigned short)300)
 #define mainEXTERNAL_ADC_TASK_STACK ((unsigned short)300)
 #define mainDISPLAY_TASK_STACK ((unsigned short)300)
@@ -79,5 +79,7 @@ typedef enum {
 
 extern resetReason_t mainResetReason;
 extern channel_codec_instance_t cc_instances[channel_codec_comport_COUNT];
+
+void main_set_date_time(uint16_t year, uint8_t month, uint8_t day, uint8_t hour, uint8_t min, uint8_t sec);
 
 #endif /* MAIN_H_ */
