@@ -21,6 +21,49 @@ device_descriptor_t get_device_descriptor(void) {
 
 void get_sample_data(int16_t samples_out[128], adc_sample_channel_t channel) {
     extadc_get_sample_data(samples_out, channel);
+#if 0
+    static int16_t val = 0;
+    for (int i = 0; i < 128; i++) {
+        samples_out[i] = val;
+    }
+    val++;
+#endif
+}
+
+power_sensor_data_t get_power_sensor_data(void) {
+
+    power_sensor_data_t result = {0};
+
+    int16_t i4[u_COUNT] = {0};
+    uint16_t u3[3] = {0};
+
+    extadc_get_voltages_avg(i4);
+    result.voltage_l12_avg = i4[u_l12];
+    result.voltage_l23_avg = i4[u_l23];
+    result.voltage_l31_avg = i4[u_l31];
+    result.voltage_aux = i4[u_aux];
+
+    extadc_get_voltages_effective(u3);
+    result.voltage_l12_eff = u3[0];
+    result.voltage_l23_eff = u3[1];
+    result.voltage_l31_eff = u3[2];
+
+    extadc_get_currents_avg(i4);
+    result.current_l1_avg = i4[0];
+    result.current_l2_avg = i4[1];
+    result.current_l3_avg = i4[2];
+
+    extadc_get_currents_effective(u3);
+    result.current_l1_eff = u3[0];
+    result.current_l2_eff = u3[1];
+    result.current_l3_eff = u3[2];
+
+    extadc_get_temperature_avg(u3);
+    result.temperature_l1 = u3[0];
+    result.temperature_l2 = u3[1];
+    result.temperature_l3 = u3[2];
+
+    return result;
 }
 
 void set_unix_date_time(uint32_t unix_date_time) {

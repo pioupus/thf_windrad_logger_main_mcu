@@ -53,6 +53,8 @@ void extadc_get_voltages_effective(uint16_t eff[3]);
 void extadc_get_currents_avg(int16_t avg[i_COUNT]);
 void extadc_get_currents_effective(uint16_t eff[i_COUNT]);
 
+void extadc_get_temperature_avg(uint16_t avg[3]);
+
 void extadc_get_sample_data(int16_t samples[ADC_RECORDS_TO_BUFFER], const ext_adc_value_channel_t channel);
 
 void taskExternalADC(void *pvParameters);

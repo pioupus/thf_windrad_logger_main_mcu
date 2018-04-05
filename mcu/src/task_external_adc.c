@@ -212,10 +212,19 @@ void extadc_get_currents_avg(int16_t avg[i_COUNT]) {
     }
     portEXIT_CRITICAL();
 }
+
 void extadc_get_currents_effective(uint16_t eff[i_COUNT]) {
     portENTER_CRITICAL();
     for (int i = 0; i < i_COUNT; i++) {
         eff[i] = power_currents_effective[i];
+    }
+    portEXIT_CRITICAL();
+}
+
+void extadc_get_temperature_avg(uint16_t avg[3]) {
+    portENTER_CRITICAL();
+    for (int i = 0; i < i_COUNT; i++) {
+        avg[i] = temparatures_average[i];
     }
     portEXIT_CRITICAL();
 }

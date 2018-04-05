@@ -299,6 +299,11 @@ void USART3_IRQHandler(void) {
             husart3.Instance->DR = cChar;
         } else {
             __HAL_USART_DISABLE_IT(&husart3, USART_IT_TXE);
+            CLEAR_LED_COM_BOT_YELLOW();
+            CLEAR_LED_COM_TOP_YELLOW();
+
+            CLEAR_LED_COM_BOT_GREEN();
+            CLEAR_LED_COM_TOP_GREEN();
         }
     }
 

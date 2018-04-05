@@ -41,7 +41,33 @@ typedef struct {
     char version[8];
 } device_descriptor_t;
 
+typedef struct {
+    int16_t current_l1_avg;
+    int16_t current_l2_avg;
+    int16_t current_l3_avg;
+
+    uint16_t current_l1_eff;
+    uint16_t current_l2_eff;
+    uint16_t current_l3_eff;
+
+    int16_t voltage_l12_avg;
+    int16_t voltage_l23_avg;
+    int16_t voltage_l31_avg;
+
+    uint16_t voltage_l12_eff;
+    uint16_t voltage_l23_eff;
+    uint16_t voltage_l31_eff;
+
+    uint16_t temperature_l1;
+    uint16_t temperature_l2;
+    uint16_t temperature_l3;
+
+    int16_t voltage_aux;
+
+} power_sensor_data_t;
+
 void get_sample_data(int16_t samples_out[128], adc_sample_channel_t channel);
+power_sensor_data_t get_power_sensor_data(void);
 
 void set_unix_date_time(uint32_t unix_date_time);
 uint32_t get_unix_date_time(void);

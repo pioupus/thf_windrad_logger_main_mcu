@@ -39,6 +39,9 @@ void ChannelCodec_errorHandler(channel_codec_instance_t *instance, channelCodecE
 }
 
 RPC_RESULT phyPushDataBuffer(channel_codec_instance_t *instance, const char *buffer, size_t length) {
+    SET_LED_COM_BOT_YELLOW();
+    SET_LED_COM_TOP_YELLOW();
+
     if (instance->aux.port == channel_codec_comport_transmission) {
         vSerialPutString(serCOM_RPC, buffer, length);
     }
@@ -63,6 +66,8 @@ void taskRPCSerialIn(void *pvParameters) {
     vTaskDelay((50 / portTICK_RATE_MS));
     for (;;) {
         if (xSerialGetChar(serCOM_RPC, &inByte, 100 / portTICK_RATE_MS) == pdTRUE) {
+            SET_LED_COM_BOT_GREEN();
+            SET_LED_COM_TOP_GREEN();
             channel_push_byte_to_RPC(&cc_instances[channel_codec_comport_transmission], inByte);
         }
     }
