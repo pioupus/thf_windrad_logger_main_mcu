@@ -29,6 +29,9 @@ FREERTOSDIR = $(LIBRARIES)/FreeRTOSv9.0.0
 
 SOURCES += $(SRC)/main.c
 
+SOURCES += $(SRC)/storage_calibration.c
+SOURCES += $(SRC)/eeprom_emulation.c
+SOURCES += $(SRC)/eeprom_storage.c
 SOURCES += $(SRC)/board.c
 SOURCES += $(SRC)/hd44780.c
 SOURCES += $(SRC)/task_led.c

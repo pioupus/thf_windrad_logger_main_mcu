@@ -3,14 +3,14 @@
 #ifdef __cplusplus
 extern "C" {
 #endif /* __cplusplus */
+#ifndef QTMCU_H
+#define QTMCU_H
 #pragma RPC prefix RPC_TRANSMISSION_
 
-typedef enum { rpcLEDStatus_none, rpcLEDStatus_off, rpcLEDStatus_on } rpcLEDStatus_t;
+#include "board.h"
 
 //#pragma RPC noanswer mcuSendDataNoAnswer
 // void mcuSendDataNoAnswer(uint8_t data);
-
-// uint16_t mcuSetLEDStatus(rpcLEDStatus_t ledStatus);
 
 typedef enum {
     adc_sample_channel_curr_l1,
@@ -66,6 +66,20 @@ typedef struct {
 
 } power_sensor_data_t;
 
+typedef struct {
+    // y = c0 + c1*x + c2*x*x
+    int32_t c0_over_65536;
+    int32_t c1_over_65536;
+    int32_t c2_over_65536;
+} calibration_coefficients_t;
+
+typedef struct {
+    calibration_coefficients_t channel_pos[ext_adc_value_COUNT];
+    calibration_coefficients_t channel_neg[ext_adc_value_COUNT];
+} calibration_t;
+
+void set_calibration_data(calibration_coefficients_t calibration_data_pos_in[11], calibration_coefficients_t calibration_data_neg_in[11]);
+
 void get_sample_data(int16_t samples_out[128], adc_sample_channel_t channel);
 power_sensor_data_t get_power_sensor_data(void);
 
@@ -73,6 +87,8 @@ void set_unix_date_time(uint32_t unix_date_time);
 uint32_t get_unix_date_time(void);
 
 device_descriptor_t get_device_descriptor(void);
+
+#endif
 
 #ifdef __cplusplus
 }

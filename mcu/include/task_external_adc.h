@@ -20,27 +20,9 @@
 #define MCU_INCLUDE_TASK_EXTERNAL_ADC_H_
 
 #include "board.h"
+#include "storage_calibration.h"
 
 #define ADC_RECORDS_TO_BUFFER 128
-
-typedef enum {
-    ext_adc_value_curr_l1,
-    ext_adc_value_curr_l2,
-    ext_adc_value_curr_l3,
-
-    ext_adc_value_vref,
-
-    ext_adc_value_volt_l12,
-    ext_adc_value_volt_l23,
-    ext_adc_value_volt_l31,
-
-    ext_adc_value_aux_volt,
-
-    ext_adc_value_temp_l1,
-    ext_adc_value_temp_l2,
-    ext_adc_value_temp_l3,
-    ext_adc_value_COUNT
-} ext_adc_value_channel_t;
 
 typedef struct { int16_t l1, l2, l3; } ext_adc_temperatures_t;
 

@@ -60,6 +60,8 @@ static uint16_t power_voltages_effective[u_COUNT];
 
 static uint16_t temparatures_average[3];
 
+static calibration_t calibration_data;
+
 const ext_adc_raw_channel_t ORDER_OF_ACQUISITION[] = {
 #if 1
     ext_adc_channel_raw_curr_l1_neg, ext_adc_channel_raw_curr_l1_pos, ext_adc_channel_raw_curr_l2_pos, ext_adc_channel_raw_curr_l2_neg,
@@ -278,12 +280,39 @@ void HAL_I2SEx_TxRxHalfCpltCallback(I2S_HandleTypeDef *hi2s) {
     portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 }
 
+int32_t apply_calibration(int32_t in_value, const calibration_t *calibration, const ext_adc_value_channel_t channel) {
+    int64_t result = 0;
+    if (in_value > 0) {
+        result = (int64_t)calibration->channel_pos[channel].c0_over_65536 +
+                 (int64_t)calibration->channel_pos[channel].c1_over_65536 * (int64_t)in_value +
+                 (int64_t)calibration->channel_pos[channel].c2_over_65536 * (int64_t)in_value * (int64_t)in_value;
+    } else {
+        result = (int64_t)calibration->channel_neg[channel].c0_over_65536 +
+                 (int64_t)calibration->channel_neg[channel].c1_over_65536 * (int64_t)in_value +
+                 (int64_t)calibration->channel_neg[channel].c2_over_65536 * (int64_t)in_value * (int64_t)in_value;
+    }
+    return result / 65536;
+}
+
+uint16_t abs_i16(int16_t val) {
+    if (val < 0) {
+        return -val;
+    } else {
+        return val;
+    }
+}
+
 void taskExternalADC(void *pvParameters) {
 
     for (uint i = 0; i < LAST_INDEX_IN_ACQUIRE_ORDER + 1; i++) { // check if there are duplicates. If yes, the data processing beneath wont work
         for (uint n = i + 1; n < LAST_INDEX_IN_ACQUIRE_ORDER + 1; n++) {
             assert(ORDER_OF_ACQUISITION[i] != ORDER_OF_ACQUISITION[n]);
         }
+    }
+
+    for (int i = 0; i < ext_adc_value_COUNT; i++) {
+        calibration_data.channel_neg[i].c1_over_65536 = 65536;
+        calibration_data.channel_pos[i].c1_over_65536 = 65536;
     }
 
     ExternalADC_Config();
@@ -293,16 +322,18 @@ void taskExternalADC(void *pvParameters) {
     uint16_t read_buffer_start_index = 0;
     uint32_t write_index = 0;
     uint32_t sample_time_stamp = 0;
-    int32_t temperatures_avging[3] = {0};
-    int32_t currents_avging[i_COUNT] = {0};
-    int32_t voltages_avging[u_COUNT] = {0};
-
-    const uint16_t AVERAGE_LENGTH_TEMPERATURE = 256;
-    const uint16_t AVERAGE_LENGTH_VOLTAGE = 256;
-    const uint16_t AVERAGE_LENGTH_CURRENT = 256;
+    int64_t temperatures_avging[3] = {0};
+    int64_t currents_avging[i_COUNT] = {0};
+    int64_t voltages_avging[u_COUNT] = {0};
 
     uint64_t currents_effectiving[i_COUNT] = {0};
     uint64_t voltages_effectiving[u_COUNT] = {0};
+
+    uint16_t currents_max_abs[i_COUNT] = {0};
+    uint32_t voltages_max_abs[u_COUNT] = {0};
+
+    uint64_t effectiving_test_possible_overflow = {0};
+
     uint32_t effectiving_n = 0;
     TickType_t effective_calculation_period_start_ms = xTaskGetTickCount();
     const TickType_t EFFECTIVE_CALCULATION_PERIOD_LENGTH_ms = 1000 / portTICK_RATE_MS;
@@ -399,7 +430,9 @@ void taskExternalADC(void *pvParameters) {
                         adc_channels[ext_adc_value_vref][write_index].value = data_record[ext_adc_channel_raw_vref].value;
                         adc_channels[ext_adc_value_vref][write_index].time_stamp = data_record[ext_adc_channel_raw_vref].time_stamp;
                     }
-
+                    for (int i = 0; i < ext_adc_value_COUNT; i++) {
+                        adc_channels[i][write_index].value = apply_calibration(adc_channels[i][write_index].value, &calibration_data, i);
+                    }
                     temperatures_avging[0] += adc_channels[ext_adc_value_temp_l1][write_index].value;
                     temperatures_avging[1] += adc_channels[ext_adc_value_temp_l2][write_index].value;
                     temperatures_avging[2] += adc_channels[ext_adc_value_temp_l3][write_index].value;
@@ -408,25 +441,36 @@ void taskExternalADC(void *pvParameters) {
                     currents_avging[i_l2] += adc_channels[ext_adc_value_curr_l2][write_index].value;
                     currents_avging[i_l3] += adc_channels[ext_adc_value_curr_l3][write_index].value;
 
+                    if (currents_max_abs[i_l1] < abs_i16(adc_channels[ext_adc_value_curr_l1][write_index].value)) {
+                        currents_max_abs[i_l1] = abs_i16(adc_channels[ext_adc_value_curr_l1][write_index].value);
+                    }
+
+                    if (currents_max_abs[i_l2] < abs_i16(adc_channels[ext_adc_value_curr_l2][write_index].value)) {
+                        currents_max_abs[i_l2] = abs_i16(adc_channels[ext_adc_value_curr_l2][write_index].value);
+                    }
+
+                    if (currents_max_abs[i_l3] < abs_i16(adc_channels[ext_adc_value_curr_l3][write_index].value)) {
+                        currents_max_abs[i_l3] = abs_i16(adc_channels[ext_adc_value_curr_l3][write_index].value);
+                    }
+
+                    if (voltages_max_abs[u_l12] < abs_i16(adc_channels[ext_adc_value_volt_l12][write_index].value)) {
+                        voltages_max_abs[u_l12] = abs_i16(adc_channels[ext_adc_value_volt_l12][write_index].value);
+                    }
+
+                    if (voltages_max_abs[u_l23] < abs_i16(adc_channels[ext_adc_value_volt_l23][write_index].value)) {
+                        voltages_max_abs[u_l23] = abs_i16(adc_channels[ext_adc_value_volt_l23][write_index].value);
+                    }
+                    if (voltages_max_abs[u_l31] < abs_i16(adc_channels[ext_adc_value_volt_l31][write_index].value)) {
+                        voltages_max_abs[u_l31] = abs_i16(adc_channels[ext_adc_value_volt_l31][write_index].value);
+                    }
+                    if (voltages_max_abs[u_aux] < abs_i16(adc_channels[ext_adc_value_aux_volt][write_index].value)) {
+                        voltages_max_abs[u_aux] = abs_i16(adc_channels[ext_adc_value_aux_volt][write_index].value);
+                    }
+
                     voltages_avging[u_l12] += adc_channels[ext_adc_value_volt_l12][write_index].value;
                     voltages_avging[u_l23] += adc_channels[ext_adc_value_volt_l23][write_index].value;
                     voltages_avging[u_l31] += adc_channels[ext_adc_value_volt_l31][write_index].value;
                     voltages_avging[u_aux] += adc_channels[ext_adc_value_aux_volt][write_index].value;
-
-                    for (int i = 0; i < 3; i++) {
-                        temparatures_average[i] = temperatures_avging[i] / AVERAGE_LENGTH_TEMPERATURE;
-                        temperatures_avging[i] -= temparatures_average[i];
-                    }
-
-                    for (int i = 0; i < i_COUNT; i++) {
-                        power_currents_average[i] = currents_avging[i] / AVERAGE_LENGTH_CURRENT;
-                        currents_avging[i] -= power_currents_average[i];
-                    }
-
-                    for (int i = 0; i < u_COUNT; i++) {
-                        power_voltages_average[i] = voltages_avging[i] / AVERAGE_LENGTH_CURRENT;
-                        voltages_avging[i] -= power_voltages_average[i];
-                    }
 
                     currents_effectiving[i_l1] +=
                         adc_channels[ext_adc_value_curr_l1][write_index].value * adc_channels[ext_adc_value_curr_l1][write_index].value;
@@ -441,16 +485,17 @@ void taskExternalADC(void *pvParameters) {
                         adc_channels[ext_adc_value_volt_l23][write_index].value * adc_channels[ext_adc_value_volt_l23][write_index].value;
                     voltages_effectiving[u_l31] +=
                         adc_channels[ext_adc_value_volt_l31][write_index].value * adc_channels[ext_adc_value_volt_l31][write_index].value;
-                    assert(voltages_effectiving[u_l12] < ((uint64_t)1 << 50));
+
+                    effectiving_test_possible_overflow += 4096 * 4096;
+
+                    assert(effectiving_test_possible_overflow < ((uint64_t)1 << 63));
 
                     effectiving_n++;
                     if (effective_calculation_period_start_ms + EFFECTIVE_CALCULATION_PERIOD_LENGTH_ms < xTaskGetTickCount()) {
 
+                        assert(effectiving_n);
                         for (int i = 0; i < 3; i++) {
-                            //
-                            assert(effectiving_n);
                             currents_effectiving[i] /= effectiving_n;
-
                             power_currents_effective[i] = round(sqrt(currents_effectiving[i]));
                             currents_effectiving[i] = 0;
                         }
@@ -459,6 +504,29 @@ void taskExternalADC(void *pvParameters) {
                             power_voltages_effective[i] = round(sqrt(voltages_effectiving[i]));
                             voltages_effectiving[i] = 0;
                         }
+
+                        for (int i = 0; i < 3; i++) {
+                            temparatures_average[i] = temperatures_avging[i] / effectiving_n;
+                            temperatures_avging[i] = 0;
+                        }
+
+                        for (int i = 0; i < i_COUNT; i++) {
+                            power_currents_average[i] = currents_avging[i] / effectiving_n;
+                            currents_avging[i] = 0;
+                        }
+
+                        for (int i = 0; i < u_COUNT; i++) {
+                            power_voltages_average[i] = voltages_avging[i] / effectiving_n;
+                            voltages_avging[i] = 0;
+                        }
+
+                        for (int i = 0; i < i_COUNT; i++) {
+                            currents_max_abs[i] = 0;
+                        }
+                        for (int i = 0; i < u_COUNT; i++) {
+                            voltages_max_abs[i] = 0;
+                        }
+                        effectiving_test_possible_overflow = 0;
                         //__asm__("BKPT");
                         effective_calculation_period_start_ms = xTaskGetTickCount();
                         effectiving_n = 0;

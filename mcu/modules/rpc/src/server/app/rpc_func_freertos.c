@@ -10,6 +10,7 @@
 #include "vc.h"
 #include "task_external_adc.h"
 #include "rtc_stdlib.h"
+#include <assert.h>
 
 device_descriptor_t get_device_descriptor(void) {
     device_descriptor_t retval = {.name = "THF_LOGGER", .version = "0.1"};
@@ -28,6 +29,11 @@ void get_sample_data(int16_t samples_out[128], adc_sample_channel_t channel) {
     }
     val++;
 #endif
+}
+
+void set_calibration_data(calibration_coefficients_t calibration_data_pos_in[], calibration_coefficients_t calibration_data_neg_in[]) {
+    assert(sizeof(calibration_data_pos_in) == sizeof(calibration_coefficients_t[ext_adc_value_COUNT]));
+    assert(sizeof(calibration_data_neg_in) == sizeof(calibration_coefficients_t[ext_adc_value_COUNT]));
 }
 
 power_sensor_data_t get_power_sensor_data(void) {

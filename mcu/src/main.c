@@ -26,6 +26,7 @@
 #include "board.h"
 #include "serial.h"
 
+#include "eeprom_storage.h"
 #include "task_adc.h"
 #include "rtc_stdlib.h"
 #include "task_external_adc.h"
@@ -275,6 +276,8 @@ int main(void) {
     HAL_RCC_GetPCLK2Freq();
     HAL_Init();
     rtc_init();
+    eeprom_init();
+    calib_init();
     boardConfigurePIO();
 
     // CLEAR_SHUTDOWN();

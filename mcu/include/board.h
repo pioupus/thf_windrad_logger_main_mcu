@@ -504,6 +504,25 @@ typedef enum {
     ext_adc_channel_raw_gnd2 = 11,
 } ext_adc_raw_channel_t;
 
+typedef enum {
+    ext_adc_value_curr_l1,
+    ext_adc_value_curr_l2,
+    ext_adc_value_curr_l3,
+
+    ext_adc_value_vref,
+
+    ext_adc_value_volt_l12,
+    ext_adc_value_volt_l23,
+    ext_adc_value_volt_l31,
+
+    ext_adc_value_aux_volt,
+
+    ext_adc_value_temp_l1,
+    ext_adc_value_temp_l2,
+    ext_adc_value_temp_l3,
+    ext_adc_value_COUNT
+} ext_adc_value_channel_t;
+
 void boardConfigurePIO(void);
 void boardPowerOnPIO(void);
 void boardInitAFPin(const pinGPIO_t *pinAF);

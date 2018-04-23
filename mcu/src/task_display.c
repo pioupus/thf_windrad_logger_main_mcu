@@ -79,8 +79,9 @@ static void display_screen_iup_update() {
     time_t t = time(0);
     struct tm printTm = *(localtime(&t));
     char buffer[20] = {0};
-    strftime(buffer, 20, "%m/%d/%y %H:%M:%S", &printTm);
-    lcd_printf_at(0, 3, "%s\r\n", buffer);
+    // strftime(buffer, 20, "%m/%d/%y %H:%M:%S", &printTm);
+    strftime(buffer, 20, "%H:%M:%S", &printTm);
+    lcd_printf_at(0, 0, "%s\r\n", buffer);
 }
 
 static void display_screen_boot_background() {
