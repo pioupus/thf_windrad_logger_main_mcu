@@ -38,6 +38,8 @@
 #include "chip_init.h"
 #include "stm32f4xx_hal.h"
 
+#include "rpc_transmission/server/app/qt2mcu.h"
+
 /** Name of the board */
 #define BOARD_NAME "rpcFREERTOS_TEMPLATE"
 
@@ -60,7 +62,6 @@ typedef struct {
 } pinAlternateFunction_t;
 */
 
-typedef enum { kid_none, kid_key1, kid_onoff, kid_KEYCOUNT } key_id_t;
 typedef enum { lid_none, lid_red, lid_green, lid_yellow, lid_LEDCOUNT } led_id_t;
 typedef enum { les_none, les_on, les_off } led_state_t;
 
@@ -217,7 +218,10 @@ typedef enum { les_none, les_on, les_off } led_state_t;
     {                                                                                                                                                \
         .pinDef =                                                                                                                                    \
             {                                                                                                                                        \
-                .Pin = GPIO_PIN_11, .Mode = GPIO_MODE_INPUT, .Speed = GPIO_SPEED_FREQ_MEDIUM, .Pull = GPIO_NOPULL,                                   \
+                .Pin = GPIO_PIN_11,                                                                                                                  \
+                .Mode = GPIO_MODE_INPUT,                                                                                                             \
+                .Speed = GPIO_SPEED_FREQ_MEDIUM,                                                                                                     \
+                .Pull = GPIO_NOPULL,                                                                                                                 \
             },                                                                                                                                       \
         .port = GPIOC                                                                                                                                \
     }
@@ -503,25 +507,6 @@ typedef enum {
     ext_adc_channel_raw_gnd1 = 15,
     ext_adc_channel_raw_gnd2 = 11,
 } ext_adc_raw_channel_t;
-
-typedef enum {
-    ext_adc_value_curr_l1,
-    ext_adc_value_curr_l2,
-    ext_adc_value_curr_l3,
-
-    ext_adc_value_vref,
-
-    ext_adc_value_volt_l12,
-    ext_adc_value_volt_l23,
-    ext_adc_value_volt_l31,
-
-    ext_adc_value_aux_volt,
-
-    ext_adc_value_temp_l1,
-    ext_adc_value_temp_l2,
-    ext_adc_value_temp_l3,
-    ext_adc_value_COUNT
-} ext_adc_value_channel_t;
 
 void boardConfigurePIO(void);
 void boardPowerOnPIO(void);

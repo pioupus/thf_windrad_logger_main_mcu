@@ -7,6 +7,7 @@
 
 #include "eeprom_storage.h"
 #include "eeprom_emulation.h"
+#include "stm32f4xx_hal.h"
 #include <assert.h>
 
 #define STORAGE_CHUNK_SIZE 16
@@ -64,7 +65,9 @@ static void check_for_overlaps(uint16_t start_address, uint16_t size) {
 }
 
 void eeprom_init() {
+    HAL_FLASH_Unlock();
     EE_Init();
+    HAL_FLASH_Lock();
     for (uint i = 0; i < STORAGE_CHUNK_SIZE; i++) {
         found_storage_chunks[i].valid = false;
     }
@@ -75,20 +78,26 @@ void eeprom_write_buffer(uint16_t address, const uint16_t *data, uint16_t size_i
     check_for_overlaps(address, size_in_half_word);
     for (uint virt_addre = address; virt_addre < address + size_in_half_word; virt_addre++) {
         uint16_t probe_val = 0;
-        EE_ReadVariable(virt_addre, &probe_val);
-        if (probe_val != data[i]) {
-            EE_WriteVariable(virt_addre, data[i]);
+        uint16_t ee_result = EE_ReadVariable(virt_addre, &probe_val);
+        if ((probe_val != data[i]) || (ee_result != 0)) {
+            HAL_FLASH_Unlock();
+            uint16_t ret_val = EE_WriteVariable(virt_addre, data[i]);
+            HAL_FLASH_Lock();
+            assert(ret_val == HAL_OK);
         }
         i++;
     }
 }
 
-void eeprom_read_buffer(uint16_t address, uint16_t *data, uint16_t size_in_half_word) {
+HAL_StatusTypeDef eeprom_read_buffer(uint16_t address, uint16_t *data, uint16_t size_in_half_word) {
     uint i = 0;
     check_for_overlaps(address, size_in_half_word);
     for (uint virt_addre = address; virt_addre < address + size_in_half_word; virt_addre++) {
-        uint16_t probe_val = 0;
-        EE_ReadVariable(virt_addre, &data[i]);
+        data[i] = 0xFFFF;
+        if (EE_ReadVariable(virt_addre, &data[i]) != 0) {
+            return HAL_ERROR;
+        }
         i++;
     }
+    return HAL_OK;
 }

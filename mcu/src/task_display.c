@@ -11,6 +11,7 @@
 #include <assert.h>
 #include "vc.h"
 #include <time.h>
+#include <string.h>
 
 const uint8_t TABLE_3_COL_1 = 5;
 const uint8_t TABLE_3_COL_2 = 10;
@@ -18,12 +19,33 @@ const uint8_t TABLE_3_COL_3 = 15;
 
 screen_id_t current_screen_id = -1;
 
+static uint8_t custom_screen_buffer[_LCD_ROWS][_LCD_COLS];
+
 typedef struct {
     screen_id_t id;
     int update_interval_ms;
     void (*paint_function)(void);
     void (*update_function)(void);
 } screen_description_t;
+
+void display_custom_screen_write_text(uint8_t row, uint8_t *text) {
+    memcpy(custom_screen_buffer[row], text, _LCD_COLS);
+}
+
+void display_custom_screen_clear() {
+    memset(custom_screen_buffer, 0, sizeof(custom_screen_buffer));
+}
+
+static void display_screen_custom_background() {
+}
+
+static void display_screen_custom_update() {
+    lcd_putc('\f');
+    lcd_printf_at(0, 0, "%s", custom_screen_buffer[0][0]);
+    lcd_printf_at(0, 1, "%s", custom_screen_buffer[1][0]);
+    lcd_printf_at(0, 2, "%s", custom_screen_buffer[2][0]);
+    lcd_printf_at(0, 3, "%s", custom_screen_buffer[3][0]);
+}
 
 static void display_screen_iup_background() {
     lcd_putc('\f');
@@ -97,11 +119,19 @@ static void display_screen_boot_update() {
 
 const screen_description_t screen_instruction_table[] = {
     //
-    {.id = screen_boot,
+    {.id = screen_boot, //
      .update_interval_ms = 5000,
      .paint_function = &display_screen_boot_background,
      .update_function = &display_screen_boot_update},
-    {.id = screen_iup, .update_interval_ms = 1000, .paint_function = &display_screen_iup_background, .update_function = &display_screen_iup_update} //
+    {.id = screen_iup, //
+     .update_interval_ms = 1000,
+     .paint_function = &display_screen_iup_background,
+     .update_function = &display_screen_iup_update}, //
+    {.id = screen_custom,                            //
+     .update_interval_ms = 1000,
+     .paint_function = &display_screen_custom_background,
+     .update_function = &display_screen_custom_update} //
+
 };
 
 void display_set_screen(screen_id_t new_screen_id) {
@@ -110,6 +140,10 @@ void display_set_screen(screen_id_t new_screen_id) {
         screen_instruction_table[current_screen_id].paint_function();
         screen_instruction_table[current_screen_id].update_function();
     }
+}
+
+screen_id_t display_get_current_screen(void) {
+    return current_screen_id;
 }
 
 static void test_screen_isntruction_table() {

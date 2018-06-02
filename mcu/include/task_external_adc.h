@@ -24,19 +24,25 @@
 
 #define ADC_RECORDS_TO_BUFFER 128
 
-typedef struct { int16_t l1, l2, l3; } ext_adc_temperatures_t;
+typedef struct {
+    int16_t l1, l2, l3;
+} ext_adc_temperatures_t;
 
 typedef enum { i_l1, i_l2, i_l3, i_COUNT } current_index_t;
 typedef enum { u_l12, u_l23, u_l31, u_aux, u_COUNT } voltage_index_t;
 
 void extadc_get_voltages_avg(int16_t avg[u_COUNT]);
 void extadc_get_voltages_effective(uint16_t eff[3]);
+void extadc_get_voltages_max(uint16_t max[u_COUNT]);
 
 void extadc_get_currents_avg(int16_t avg[i_COUNT]);
 void extadc_get_currents_effective(uint16_t eff[i_COUNT]);
+void extadc_get_currents_max(uint16_t max[i_COUNT]);
 
 void extadc_get_temperature_avg(uint16_t avg[3]);
 
+void extadc_start_acquire_sample_data();
+bool extadc_is_sample_data_complete();
 void extadc_get_sample_data(int16_t samples[ADC_RECORDS_TO_BUFFER], const ext_adc_value_channel_t channel);
 
 void taskExternalADC(void *pvParameters);

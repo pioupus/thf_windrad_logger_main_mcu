@@ -26,9 +26,6 @@
 
 /* Bus controls */
 
-#define _LCD_ROWS 4
-#define _LCD_COLS 20
-
 #define IF_BUS 4 /* Data bus width (4 or 8) */
 #define IF_INIT()                                                                                                                                    \
     {}                           /* Initialize control port */
@@ -94,7 +91,7 @@ static uint8_t Csr; /* Current cursor state */
 static void lcd_write(uint8_t reg, /* b0:command(0)/data(1), b2..1:E1(2)/E2(1)/both(0)(don't care on single controller), b3:write high nibble
                                       only(don't care on 8-bit bus) */
                       uint8_t dat  /* Byte to be written */
-                      ) {
+) {
     if (reg & 1) /* Select register */
         RS_HIGH();
     else
@@ -194,7 +191,7 @@ void lcd_init(void) {
 
 void lcd_locate(uint8_t col, /* Cursor column position (0.._LCD_COLS-1) */
                 uint8_t row  /* Cursor row position (0.._LCD_ROWS-1) */
-                ) {
+) {
     Row = row;
     Column = col;
 
@@ -277,7 +274,7 @@ void lcd_putc(char chr) {
 
 #if _USE_CURSOR
 void lcd_cursor(uint8_t stat /* 0:off, 1:blinking block, 2:under-line */
-                ) {
+) {
     Csr = stat & 3;
     lcd_locate(Row, Column);
 }
@@ -291,7 +288,7 @@ void lcd_cursor(uint8_t stat /* 0:off, 1:blinking block, 2:under-line */
 void lcd_setcg(uint8_t chr,     /* Character code to be registered (0..7) */
                uint8_t n,       /* Number of characters to register */
                const uint8_t *p /* Pointer to the character pattern (8 * n bytes) */
-               ) {
+) {
     lcd_write(0, 0x40 | chr * 8);
     n *= 8;
     do
@@ -309,7 +306,7 @@ void lcd_setcg(uint8_t chr,     /* Character code to be registered (0..7) */
 #if _USE_FUEL && _USE_CGRAM
 void lcd_put_fuel(int8_t val, /* Fuel level (-1:plugged, 0:empty cell, ..., 5:full cell) */
                   uint8_t chr /* User character to use */
-                  ) {
+) {
     static const uint8_t plg[8] = {10, 10, 31, 31, 14, 4, 7, 0};
     uint8_t gfx[8], d, *p;
     int8_t i;
@@ -342,7 +339,7 @@ void lcd_put_fuel(int8_t val, /* Fuel level (-1:plugged, 0:empty cell, ..., 5:fu
 void lcd_put_bar(uint16_t val,  /* Bar length (0 to _MAX_BAR represents bar length from left end) */
                  uint8_t width, /* Display area (number of chars from cursor position) */
                  uint8_t chr    /* User character code (2 chars used from this) */
-                 ) {
+) {
     static const uint8_t ptn[] = {0xE0, 0xE0, 0xE0, 0xC0, 0xC0, 0xC0, 0x80, 0,    0xF0, 0xE0, 0xE0, 0xE0,
                                   0xC0, 0xC0, 0xC0, 0,    0xF0, 0xF0, 0xE0, 0xE0, 0xE0, 0xC0, 0xC0, 0};
     const uint8_t *pp;
@@ -389,7 +386,7 @@ void lcd_put_bar(uint16_t val,  /* Bar length (0 to _MAX_BAR represents bar leng
 void lcd_put_point(uint16_t val,  /* Dot position (0 to _MAX_POINT represents left end to write end) */
                    uint8_t width, /* Display area (number of chars from cursor position) */
                    uint8_t chr    /* User character code (2 chars used from this) */
-                   ) {
+) {
     static const uint8_t ptn[] = {0x06, 0x0C, 0x0C, 0x0C, 0x18, 0x18, 0x18, 0,    0x06, 0x06, 0x0C, 0x0C,
                                   0x0C, 0x18, 0x18, 0,    0x06, 0x06, 0x06, 0x0C, 0x0C, 0x0C, 0x18, 0};
     const uint8_t *pp;

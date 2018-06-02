@@ -13,3 +13,6 @@
 [submodule "qt"]
 	path = qt
 	url = https://github.com/pioupus/rpcQtTemplate.git
+[submodule "mcu/src/libraries/newlib-cygwin"]
+	path = mcu/src/libraries/newlib-cygwin
+	url = git://sourceware.org/git/newlib-cygwin.git

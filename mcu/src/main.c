@@ -270,19 +270,28 @@ int main(void) {
     bool hardreset = false;
     uint32_t ledstatus;
 
+    assert(ADC_VALUE_COUNT == ext_adc_value_COUNT);
+
     SystemClock_Config();
     SystemCoreClockUpdate();
     HAL_RCC_GetPCLK1Freq();
     HAL_RCC_GetPCLK2Freq();
     HAL_Init();
     rtc_init();
-    eeprom_init();
-    calib_init();
     boardConfigurePIO();
 
     // CLEAR_SHUTDOWN();
     xSerialPortInitMinimal(serCOM_DBG, 115200, 100);
     xSerialPortInitMinimal(serCOM_RPC, 115200, 300);
+
+    SET_LED_COM_BOT_GREEN();
+    SET_LED_COM_BOT_YELLOW();
+    SET_LED_COM_TOP_YELLOW();
+    SET_LED_RED();
+    // while (1) {
+    // }
+    eeprom_init();
+    calib_init();
 
 #if 0
 	for (;;){

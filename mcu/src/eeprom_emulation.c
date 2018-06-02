@@ -1,50 +1,50 @@
 /**
-  ******************************************************************************
-  * @file    EEPROM/EEPROM_Emulation/src/eeprom.c
-  * @author  MCD Application Team
-  * @brief   This file provides all the EEPROM emulation firmware functions.
-  ******************************************************************************
-  * @attention
-  *
-  * <h2><center>&copy; Copyright (c) 2017 STMicroelectronics International N.V.
-  * All rights reserved.</center></h2>
-  *
-  * Redistribution and use in source and binary forms, with or without
-  * modification, are permitted, provided that the following conditions are met:
-  *
-  * 1. Redistribution of source code must retain the above copyright notice,
-  *    this list of conditions and the following disclaimer.
-  * 2. Redistributions in binary form must reproduce the above copyright notice,
-  *    this list of conditions and the following disclaimer in the documentation
-  *    and/or other materials provided with the distribution.
-  * 3. Neither the name of STMicroelectronics nor the names of other
-  *    contributors to this software may be used to endorse or promote products
-  *    derived from this software without specific written permission.
-  * 4. This software, including modifications and/or derivative works of this
-  *    software, must execute solely and exclusively on microcontroller or
-  *    microprocessor devices manufactured by or for STMicroelectronics.
-  * 5. Redistribution and use of this software other than as permitted under
-  *    this license is void and will automatically terminate your rights under
-  *    this license.
-  *
-  * THIS SOFTWARE IS PROVIDED BY STMICROELECTRONICS AND CONTRIBUTORS "AS IS"
-  * AND ANY EXPRESS, IMPLIED OR STATUTORY WARRANTIES, INCLUDING, BUT NOT
-  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
-  * PARTICULAR PURPOSE AND NON-INFRINGEMENT OF THIRD PARTY INTELLECTUAL PROPERTY
-  * RIGHTS ARE DISCLAIMED TO THE FULLEST EXTENT PERMITTED BY LAW. IN NO EVENT
-  * SHALL STMICROELECTRONICS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
-  * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-  * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA,
-  * OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
-  * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
-  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-  *
-  ******************************************************************************
-  */
+ ******************************************************************************
+ * @file    EEPROM/EEPROM_Emulation/src/eeprom.c
+ * @author  MCD Application Team
+ * @brief   This file provides all the EEPROM emulation firmware functions.
+ ******************************************************************************
+ * @attention
+ *
+ * <h2><center>&copy; Copyright (c) 2017 STMicroelectronics International N.V.
+ * All rights reserved.</center></h2>
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted, provided that the following conditions are met:
+ *
+ * 1. Redistribution of source code must retain the above copyright notice,
+ *    this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
+ * 3. Neither the name of STMicroelectronics nor the names of other
+ *    contributors to this software may be used to endorse or promote products
+ *    derived from this software without specific written permission.
+ * 4. This software, including modifications and/or derivative works of this
+ *    software, must execute solely and exclusively on microcontroller or
+ *    microprocessor devices manufactured by or for STMicroelectronics.
+ * 5. Redistribution and use of this software other than as permitted under
+ *    this license is void and will automatically terminate your rights under
+ *    this license.
+ *
+ * THIS SOFTWARE IS PROVIDED BY STMICROELECTRONICS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS, IMPLIED OR STATUTORY WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+ * PARTICULAR PURPOSE AND NON-INFRINGEMENT OF THIRD PARTY INTELLECTUAL PROPERTY
+ * RIGHTS ARE DISCLAIMED TO THE FULLEST EXTENT PERMITTED BY LAW. IN NO EVENT
+ * SHALL STMICROELECTRONICS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+ * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA,
+ * OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+ * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
+ * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ ******************************************************************************
+ */
 /** @addtogroup EEPROM_Emulation
-  * @{
-  */
+ * @{
+ */
 
 /* Includes ------------------------------------------------------------------*/
 #include "eeprom_emulation.h"
@@ -195,12 +195,12 @@ void example() {
 #endif
 
 /**
-  * @brief  Restore the pages to a known good state in case of page's status
-  *   corruption after a power loss.
-  * @param  None.
-  * @retval - Flash error code: on write Flash error
-  *         - FLASH_COMPLETE: on success
-  */
+ * @brief  Restore the pages to a known good state in case of page's status
+ *   corruption after a power loss.
+ * @param  None.
+ * @retval - Flash error code: on write Flash error
+ *         - FLASH_COMPLETE: on success
+ */
 uint16_t EE_Init(void) {
     uint16_t PageStatus0 = 6, PageStatus1 = 6;
     // uint16_t VarIdx = 0;
@@ -406,15 +406,15 @@ uint16_t EE_Init(void) {
 }
 
 /**
-  * @brief  Verify if specified page is fully erased.
-  * @param  Address: page address
-  *   This parameter can be one of the following values:
-  *     @arg PAGE0_BASE_ADDRESS: Page0 base address
-  *     @arg PAGE1_BASE_ADDRESS: Page1 base address
-  * @retval page fully erased status:
-  *           - 0: if Page not erased
-  *           - 1: if Page erased
-  */
+ * @brief  Verify if specified page is fully erased.
+ * @param  Address: page address
+ *   This parameter can be one of the following values:
+ *     @arg PAGE0_BASE_ADDRESS: Page0 base address
+ *     @arg PAGE1_BASE_ADDRESS: Page1 base address
+ * @retval page fully erased status:
+ *           - 0: if Page not erased
+ *           - 1: if Page erased
+ */
 uint16_t EE_VerifyPageFullyErased(uint32_t Address) {
     uint32_t ReadStatus = 1;
     uint16_t AddressValue = 0x5555;
@@ -441,20 +441,23 @@ uint16_t EE_VerifyPageFullyErased(uint32_t Address) {
 }
 
 /**
-  * @brief  Returns the last stored variable data, if found, which correspond to
-  *   the passed virtual address
-  * @param  VirtAddress: Variable virtual address
-  * @param  Data: Global variable contains the read variable value
-  * @retval Success or error status:
-  *           - 0: if variable was found
-  *           - 1: if the variable was not found
-  *           - NO_VALID_PAGE: if no valid page was found.
-  */
+ * @brief  Returns the last stored variable data, if found, which correspond to
+ *   the passed virtual address
+ * @param  VirtAddress: Variable virtual address
+ * @param  Data: Global variable contains the read variable value
+ * @retval Success or error status:
+ *           - 0: if variable was found
+ *           - 1: if the variable was not found
+ *           - NO_VALID_PAGE: if no valid page was found.
+ */
 uint16_t EE_ReadVariable(uint16_t VirtAddress, uint16_t *Data) {
     uint16_t ValidPage = PAGE0;
     uint16_t AddressValue = 0x5555, ReadStatus = 1;
     uint32_t Address = EEPROM_START_ADDRESS, PageStartAddress = EEPROM_START_ADDRESS;
 
+    if (VirtAddress >= EEPROM_SIZE_U16) {
+        __asm__("BKPT");
+    }
     assert(VirtAddress < EEPROM_SIZE_U16);
 
     /* Get active Page for read operation */
@@ -469,17 +472,25 @@ uint16_t EE_ReadVariable(uint16_t VirtAddress, uint16_t *Data) {
     PageStartAddress = (uint32_t)(EEPROM_START_ADDRESS + (uint32_t)(ValidPage * PAGE_SIZE));
 
     /* Get the valid Page end Address */
-    Address = (uint32_t)((EEPROM_START_ADDRESS - 2) + (uint32_t)((1 + ValidPage) * PAGE_SIZE));
+    Address = (uint32_t)((EEPROM_START_ADDRESS + 2) + (uint32_t)((1 + ValidPage) * PAGE_SIZE));
 
     /* Check each active page address starting from end */
-    while (Address > (PageStartAddress + 2)) {
+    while (Address > (PageStartAddress + 4)) {
+        uint32_t item = (*(__IO uint32_t *)Address);
+
+        if (Address < 0x080C0294) {
+            //__asm__("BKPT");
+            __asm__("NOP");
+        }
         /* Get the current location content to be compared with virtual address */
-        AddressValue = (*(__IO uint16_t *)Address);
+        // AddressValue = (*(__IO uint16_t *)Address);
+        AddressValue = item >> 16;
 
         /* Compare the read address with the virtual address */
         if (AddressValue == VirtAddress) {
             /* Get content of Address-2 which is variable value */
-            *Data = (*(__IO uint16_t *)(Address - 2));
+            *Data = item & 0xFFFF;
+            //*Data = (*(__IO uint16_t *)(Address - 2));
 
             /* In case variable value is read, reset ReadStatus flag */
             ReadStatus = 0;
@@ -496,15 +507,15 @@ uint16_t EE_ReadVariable(uint16_t VirtAddress, uint16_t *Data) {
 }
 
 /**
-  * @brief  Writes/upadtes variable data in EEPROM.
-  * @param  VirtAddress: Variable virtual address
-  * @param  Data: 16 bit data to be written
-  * @retval Success or error status:
-  *           - FLASH_COMPLETE: on success
-  *           - PAGE_FULL: if valid page is full
-  *           - NO_VALID_PAGE: if no valid page was found
-  *           - Flash error code: on write Flash error
-  */
+ * @brief  Writes/upadtes variable data in EEPROM.
+ * @param  VirtAddress: Variable virtual address
+ * @param  Data: 16 bit data to be written
+ * @retval Success or error status:
+ *           - FLASH_COMPLETE: on success
+ *           - PAGE_FULL: if valid page is full
+ *           - NO_VALID_PAGE: if no valid page was found
+ *           - Flash error code: on write Flash error
+ */
 uint16_t EE_WriteVariable(uint16_t VirtAddress, uint16_t Data) {
     uint16_t Status = 0;
     assert(VirtAddress < EEPROM_SIZE_U16);
@@ -523,11 +534,11 @@ uint16_t EE_WriteVariable(uint16_t VirtAddress, uint16_t Data) {
 }
 
 /**
-  * @brief  Erases PAGE and PAGE1 and writes VALID_PAGE header to PAGE
-  * @param  None
-  * @retval Status of the last operation (Flash write or erase) done during
-  *         EEPROM formating
-  */
+ * @brief  Erases PAGE and PAGE1 and writes VALID_PAGE header to PAGE
+ * @param  None
+ * @retval Status of the last operation (Flash write or erase) done during
+ *         EEPROM formating
+ */
 static HAL_StatusTypeDef EE_Format(void) {
     HAL_StatusTypeDef FlashStatus = HAL_OK;
     uint32_t SectorError = 0;
@@ -566,14 +577,14 @@ static HAL_StatusTypeDef EE_Format(void) {
 }
 
 /**
-  * @brief  Find valid Page for write or read operation
-  * @param  Operation: operation to achieve on the valid page.
-  *   This parameter can be one of the following values:
-  *     @arg READ_FROM_VALID_PAGE: read operation from valid page
-  *     @arg WRITE_IN_VALID_PAGE: write operation from valid page
-  * @retval Valid page number (PAGE or PAGE1) or NO_VALID_PAGE in case
-  *   of no valid page was found
-  */
+ * @brief  Find valid Page for write or read operation
+ * @param  Operation: operation to achieve on the valid page.
+ *   This parameter can be one of the following values:
+ *     @arg READ_FROM_VALID_PAGE: read operation from valid page
+ *     @arg WRITE_IN_VALID_PAGE: write operation from valid page
+ * @retval Valid page number (PAGE or PAGE1) or NO_VALID_PAGE in case
+ *   of no valid page was found
+ */
 static uint16_t EE_FindValidPage(uint8_t Operation) {
     uint16_t PageStatus0 = 6, PageStatus1 = 6;
 
@@ -619,15 +630,15 @@ static uint16_t EE_FindValidPage(uint8_t Operation) {
 }
 
 /**
-  * @brief  Verify if active page is full and Writes variable in EEPROM.
-  * @param  VirtAddress: 16 bit virtual address of the variable
-  * @param  Data: 16 bit data to be written as variable value
-  * @retval Success or error status:
-  *           - FLASH_COMPLETE: on success
-  *           - PAGE_FULL: if valid page is full
-  *           - NO_VALID_PAGE: if no valid page was found
-  *           - Flash error code: on write Flash error
-  */
+ * @brief  Verify if active page is full and Writes variable in EEPROM.
+ * @param  VirtAddress: 16 bit virtual address of the variable
+ * @param  Data: 16 bit data to be written as variable value
+ * @retval Success or error status:
+ *           - FLASH_COMPLETE: on success
+ *           - PAGE_FULL: if valid page is full
+ *           - NO_VALID_PAGE: if no valid page was found
+ *           - Flash error code: on write Flash error
+ */
 static uint16_t EE_VerifyPageFullWriteVariable(uint16_t VirtAddress, uint16_t Data) {
     HAL_StatusTypeDef FlashStatus = HAL_OK;
     uint16_t ValidPage = PAGE0;
@@ -643,7 +654,7 @@ static uint16_t EE_VerifyPageFullWriteVariable(uint16_t VirtAddress, uint16_t Da
     }
 
     /* Get the valid Page start Address */
-    Address = (uint32_t)(EEPROM_START_ADDRESS + (uint32_t)(ValidPage * PAGE_SIZE));
+    Address = (uint32_t)(EEPROM_START_ADDRESS + 2 + (uint32_t)(ValidPage * PAGE_SIZE));
 
     /* Get the valid Page end Address */
     PageEndAddress = (uint32_t)((EEPROM_START_ADDRESS - 1) + (uint32_t)((ValidPage + 1) * PAGE_SIZE));
@@ -673,16 +684,16 @@ static uint16_t EE_VerifyPageFullWriteVariable(uint16_t VirtAddress, uint16_t Da
 }
 
 /**
-  * @brief  Transfers last updated variables data from the full Page to
-  *   an empty one.
-  * @param  VirtAddress: 16 bit virtual address of the variable
-  * @param  Data: 16 bit data to be written as variable value
-  * @retval Success or error status:
-  *           - FLASH_COMPLETE: on success
-  *           - PAGE_FULL: if valid page is full
-  *           - NO_VALID_PAGE: if no valid page was found
-  *           - Flash error code: on write Flash error
-  */
+ * @brief  Transfers last updated variables data from the full Page to
+ *   an empty one.
+ * @param  VirtAddress: 16 bit virtual address of the variable
+ * @param  Data: 16 bit data to be written as variable value
+ * @retval Success or error status:
+ *           - FLASH_COMPLETE: on success
+ *           - PAGE_FULL: if valid page is full
+ *           - NO_VALID_PAGE: if no valid page was found
+ *           - Flash error code: on write Flash error
+ */
 static uint16_t EE_PageTransfer(uint16_t VirtAddress, uint16_t Data) {
     HAL_StatusTypeDef FlashStatus = HAL_OK;
     uint32_t NewPageAddress = EEPROM_START_ADDRESS;
@@ -771,7 +782,7 @@ static uint16_t EE_PageTransfer(uint16_t VirtAddress, uint16_t Data) {
 }
 
 /**
-  * @}
-  */
+ * @}
+ */
 
 /******************* (C) COPYRIGHT 2011 STMicroelectronics *****END OF FILE****/

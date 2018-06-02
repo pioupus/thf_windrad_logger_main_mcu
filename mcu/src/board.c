@@ -118,6 +118,7 @@ void boardDisplayWriteData(uint8_t data) {
 }
 
 #if 1
+
 bool boardTestKey(key_id_t keyID) {
     switch (keyID) {
 
@@ -130,6 +131,18 @@ bool boardTestKey(key_id_t keyID) {
 
         case kid_key1:
             if (GET_KEY_1())
+                return true;
+            else
+                return false;
+            break;
+        case kid_key2:
+            if (GET_KEY_2())
+                return true;
+            else
+                return false;
+            break;
+        case kid_key3:
+            if (GET_KEY_3())
                 return true;
             else
                 return false;

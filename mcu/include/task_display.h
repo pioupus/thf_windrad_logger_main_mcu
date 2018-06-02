@@ -12,8 +12,14 @@
 #include "task.h"
 #include "board.h"
 
-typedef enum { screen_boot, screen_iup, screen_COUNT } screen_id_t;
+typedef enum { screen_boot, screen_iup, screen_custom, screen_COUNT } screen_id_t;
+
 void display_set_screen(screen_id_t new_screen_id);
+screen_id_t display_get_current_screen(void);
+
+void display_custom_screen_write_text(uint8_t row, uint8_t *text);
+void display_custom_screen_clear();
+
 void taskDisplay(void *pvParameters);
 
 #endif /* MCU_INCLUDE_TASK_DISPLAY_H_ */

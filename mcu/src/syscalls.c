@@ -30,106 +30,110 @@
 #include "syscalls.h"
 #include "task.h"
 
-
 #include "serial.h"
+
+static int errno;
 
 /*----------------------------------------------------------------------------
  *        Exported variables
  *----------------------------------------------------------------------------*/
 
 #undef errno
-extern int errno ;
-extern int  _end ;
+extern int errno;
+extern int _end;
 
 /*----------------------------------------------------------------------------
  *        Exported functions
  *----------------------------------------------------------------------------*/
-extern void _exit( int status ) ;
-extern void _kill( int pid, int sig ) ;
-extern int _getpid ( void ) ;
+extern void _exit(int status);
+extern void _kill(int pid, int sig);
+extern int _getpid(void);
 
-extern caddr_t _sbrk ( int incr )
+extern caddr_t _sbrk(int incr) {
+    if (incr == 0)
+        incr = 4;
+    return (caddr_t)pvPortMalloc(incr);
+    /*
+    static unsigned char *heap = NULL ;
+unsigned char *prev_heap ;
+if (incr < 0)
+    return 0;
+if ( heap == NULL )
 {
-	if (incr==0)
-		incr=4;
-	return (caddr_t) pvPortMalloc(incr);
-	/*
-	static unsigned char *heap = NULL ;
-    unsigned char *prev_heap ;
-    if (incr < 0)
-    	return 0;
-    if ( heap == NULL )
-    {
-        heap = (unsigned char *)&_end ;
-    }
-    prev_heap = heap;
+    heap = (unsigned char *)&_end ;
+}
+prev_heap = heap;
 
-    heap += incr ;
+heap += incr ;
 
-    return (caddr_t) prev_heap ;*/
+return (caddr_t) prev_heap ;*/
 }
 
-extern int link( char *old, char *new )
-{
-    return -1 ;
+extern int link(char *old, char *new) {
+    return -1;
 }
 
-extern int _close( int file )
-{
-    return -1 ;
+extern int _close(int file) {
+    return -1;
 }
 
-extern int _fstat( int file, struct stat *st )
-{
-    st->st_mode = S_IFCHR ;
+extern int _fstat(int file, struct stat *st) {
+    st->st_mode = S_IFCHR;
 
-    return 0 ;
+    return 0;
 }
 
-extern int _isatty( int file )
-{
-    return 1 ;
+extern int _isatty(int file) {
+    return 1;
 }
 
-extern int _lseek( int file, int ptr, int dir )
-{
-    return 0 ;
+extern int _lseek(int file, int ptr, int dir) {
+    return 0;
 }
 
-extern int _read(int file, char *ptr, int len)
-{
-    return 0 ;
+extern int _read(int file, char *ptr, int len) {
+    return 0;
 }
 
-extern int _write( int file, char *ptr, int len )
-{
-    int iIndex ;
-    
+extern int _write(int file, char *ptr, int len) {
+    int iIndex;
 
-    for ( iIndex=0 ; iIndex < len ; iIndex++, ptr++ )
-    {
-    	xSerialPutChar(serCOM_DBG,*ptr,0);
+    for (iIndex = 0; iIndex < len; iIndex++, ptr++) {
+        xSerialPutChar(serCOM_DBG, *ptr, 0);
     }
 
-    return iIndex ;
+    return iIndex;
 }
 
-extern void _exit( int status )
-{
+extern void _exit(int status) {
 
-	serialSetRTOSRunningFlag(false);
-	printf( "Exiting with status %d.\n", status ) ;
+    serialSetRTOSRunningFlag(false);
+    printf("Exiting with status %d.\n", status);
     taskDISABLE_INTERRUPTS();
 
-    for ( ; ; ) ;
+    for (;;)
+        ;
 }
 
-extern void _kill( int pid, int sig )
-{
-    return ; 
+extern void _kill(int pid, int sig) {
+    return;
 }
 
-extern int _getpid ( void )
-{
-    return -1 ;
+extern int _getpid(void) {
+    return -1;
+}
+
+// This stub function is required by stdlib
+extern int _open(const char *name, int flags, int mode) {
+    (void)name;
+    (void)flags;
+    (void)mode;
+    return -1; // does the stub-return need to be a specific value??
+}
+
+extern int *__errno(void) {
+    return &errno;
+}
+
+extern void _init(void) {
 }

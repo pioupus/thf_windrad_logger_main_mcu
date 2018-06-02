@@ -17,6 +17,7 @@
  */
 
 #include "task_rpc_serial_in.h"
+
 #include "board.h"
 
 #include "channel_codec/channel_codec.h"
@@ -28,10 +29,12 @@
 #include "serial.h"
 
 #define CHANNEL_CODEC_TX_BUFFER_SIZE 300
-#define CHANNEL_CODEC_RX_BUFFER_SIZE 64
+#define CHANNEL_CODEC_RX_BUFFER_SIZE 300
 
 static char cc_rxBuffers[channel_codec_comport_COUNT][CHANNEL_CODEC_RX_BUFFER_SIZE];
 static char cc_txBuffers[channel_codec_comport_COUNT][CHANNEL_CODEC_TX_BUFFER_SIZE];
+
+void init_rpc_key_handler(void);
 
 void ChannelCodec_errorHandler(channel_codec_instance_t *instance, channelCodecErrorNum_t ErrNum) {
     (void)ErrNum;
@@ -58,11 +61,15 @@ void taskRPCSerialIn(void *pvParameters) {
                           CHANNEL_CODEC_RX_BUFFER_SIZE, cc_txBuffers[channel_codec_comport_transmission], CHANNEL_CODEC_TX_BUFFER_SIZE);
 
     for (int i = 0; i < taskHandleID_count; i++) {
-        if (i != taskHandleID_RPCSerialIn)
+        if (i != taskHandleID_RPCSerialIn) {
             vTaskResume(taskHandles[i]);
+        }
     }
 
     xSerialPutChar(serCOM_RPC, 0x7A, 100);
+
+    init_rpc_key_handler();
+
     vTaskDelay((50 / portTICK_RATE_MS));
     for (;;) {
         if (xSerialGetChar(serCOM_RPC, &inByte, 100 / portTICK_RATE_MS) == pdTRUE) {

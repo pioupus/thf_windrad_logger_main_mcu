@@ -18,10 +18,13 @@ SRC = src
 # Libraries
 LIBRARIES = $(SRC)/libraries
 
-CMSIS = $(LIBRARIES)/STM32Cube_FW_F4_V1.18.0/Drivers/CMSIS
-HAL_DRIVER = $(LIBRARIES)/STM32Cube_FW_F4_V1.18.0/Drivers/STM32F4xx_HAL_Driver
+CMSIS = $(LIBRARIES)/STM32Cube_FW_F4_V1.21.0/Drivers/CMSIS
+HAL_DRIVER = $(LIBRARIES)/STM32Cube_FW_F4_V1.21.0/Drivers/STM32F4xx_HAL_Driver
 
 FREERTOSDIR = $(LIBRARIES)/FreeRTOSv9.0.0
+
+NEWLIBPATH =  $(LIBRARIES)/build_newlib_cyg
+
 
 
 # Define all C source files (dependencies are generated automatically)
@@ -52,7 +55,8 @@ SOURCES += $(SRC)/stm32f4xx_hal_timebase_TIM.c
 
 
 
-SOURCES += $(CMSIS)/Device/ST/STM32F4xx/Source/Templates/gcc/startup_stm32f407xx.s
+#SOURCES += $(CMSIS)/Device/ST/STM32F4xx/Source/Templates/gcc/startup_stm32f407xx.s
+SOURCES += $(SRC)/startup_stm32f407xx.s
 SOURCES += $(CMSIS)/Device/ST/STM32F4xx/Source/Templates/system_stm32f4xx.c
 
 
@@ -128,12 +132,14 @@ TARGET = $(OBJDIR)/$(TARGETNAME)
 
 # Place -D, -U or -I options here for C and C++ sources
 
+
+
 CPPFLAGS += -Iinclude
 CPPFLAGS += -Imodules/rpc/include
 CPPFLAGS += -Imodules/RPC-ChannelCodec/include
 CPPFLAGS += -Imodules/RPC-ChannelCodec/include/errorlogger_dummy
 CPPFLAGS += -I$(HAL_DRIVER)/Inc
-
+CPPFLAGS += -I$(NEWLIBPATH)/arm-none-eabi/include
 CPPFLAGS += -I$(FREERTOSDIR)/FreeRTOS/Source/include/
 CPPFLAGS += -I$(CMSIS)/Include
 CPPFLAGS += -I$(CMSIS)/Device/ST/STM32F4xx/Include
@@ -160,8 +166,11 @@ CFLAGS += -Werror
 CFLAGS += -Wno-unused-variable
 CFLAGS += -Wno-unused-parameter
 CFLAGS += -Wno-unknown-pragmas
+CFLAGS += -fno-move-loop-invariants
 #CFLAGS += -flto
 CFLAGS += -Wextra
+CFLAGS += -fdata-sections 
+CFLAGS += -fmessage-length=0 
 CFLAGS += -Wpedantic
 #CFLAGS += -Wpointer-arith
 #CFLAGS += -Wstrict-prototypes
@@ -197,18 +206,24 @@ ASFLAGS = -Wa,-adhlns=$(OBJDIR)/$(*D)/$(*F).lst
 #  -Wl,...:     tell GCC to pass this to linker
 #    -Map:      create map file
 #    --cref:    add cross reference to  map file
-LDFLAGS += -lm
-LDFLAGS += --specs=nano.specs
+
+LDFLAGS +=  -nostdlib 
+#-nostartfiles 
+LDFLAGS +=  -L$(NEWLIBPATH)/arm-none-eabi/lib/thumb/v7e-m/fpv4-sp/hard/
+LDFLAGS += --specs=$(NEWLIBPATH)/arm-none-eabi/lib/thumb/v7e-m/fpv4-sp/hard/nano.specs
 LDFLAGS += -Wl,-Map=$(TARGET).map,--cref
 LDFLAGS += -Wl,--gc-sections
 LDFLAGS += -TSTM32F407VGTx_FLASH.ld
+
+
+
 
 #============================================================================
 
 
 # Define programs and commands
-#TOOLCHAIN = arm-none-eabi
 TOOLCHAIN = arm-none-eabi-
+#TOOLCHAIN = /home/arne/opt/gcc-arm-none-eabi-7-2017-q4-major/bin/arm-none-eabi-
 
 CC        = $(TOOLCHAIN)gcc
 OBJCOPY   = $(TOOLCHAIN)objcopy
@@ -245,8 +260,13 @@ GENDEPFLAGS = -MMD -MP -MF $(OBJDIR)/$(*D)/$(*F).d
 #CPU = -mcpu=cortex-m3 -mthumb -mfloat-abi=soft
 #CPU = -mcpu=cortex-m4 -mthumb 
 #CPU = -mcpu=cortex-m4 -mthumb -mfloat-abi=softfp -mfpu=fpv4-sp-d16
-CPU = -mcpu=cortex-m4 -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16
-  
+#CPU = -mcpu=cortex-m4 -mfloat-abi=softfp -mthumb
+CPU = -mthumb -mcpu=cortex-m4 -mfloat-abi=hard -mfpu=fpv4-sp-d16
+#CPU = -mthumb -march=armv7e-m -mfpu=fpv4-sp-d16 -mfloat-abi=hard
+
+#CPU = -mcpu=cortex-m4 -mfloat-abi=softfp  -fno-exceptions -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16 -fno-exceptions
+ #CPU =  -fomit-frame-pointer -fno-strict-aliasing -fno-dwarf2-cfi-asm -fno-exceptions -mthumb -mcpu=cortex-m4 -mfloat-abi=hard -mfpu=fpv4-sp-d16
+ 
 CFLAGS   += $(CPU)
 CXXFLAGS += $(CPU)
 ASFLAGS  += $(CPU)

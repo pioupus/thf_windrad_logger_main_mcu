@@ -80,7 +80,7 @@ void ledPatternSetToBlink(led_id_t ledID, ledPatternPriority_t priority, uint8_t
 
 void ledPatternSetToOff(led_id_t ledID, ledPatternPriority_t priority) {
     if (ledID < lid_LEDCOUNT) {
-        memset(&ledPatterns[priority - 1][ledID - 1], sizeof(ledBlinkPattern_t), 0);
+        memset(&ledPatterns[priority - 1][ledID - 1], 0, sizeof(ledBlinkPattern_t));
         ledPatterns[priority - 1][ledID - 1].active = true;
         ledPatterns[priority - 1][ledID - 1].patternStyle = LED_BLINK_PATTERNSTYLE_BLINK;
         ledPatterns[priority - 1][ledID - 1].timeOff50ms = 0;
@@ -94,7 +94,7 @@ void ledPatternSetToOff(led_id_t ledID, ledPatternPriority_t priority) {
 
 void ledPatternDeactivate(led_id_t ledID, ledPatternPriority_t priority) {
     if (ledID < lid_LEDCOUNT) {
-        memset(&ledPatterns[priority - 1][ledID - 1], sizeof(ledBlinkPattern_t), 0);
+        memset(&ledPatterns[priority - 1][ledID - 1], 0, sizeof(ledBlinkPattern_t));
         ledPatterns[priority - 1][ledID - 1].active = false;
         ledPatterns[priority - 1][ledID - 1].patternStyle = LED_BLINK_PATTERNSTYLE_BLINK;
         ledPatterns[priority - 1][ledID - 1].timeOff50ms = 0;

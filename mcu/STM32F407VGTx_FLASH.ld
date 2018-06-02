@@ -41,7 +41,7 @@ _Min_Stack_Size = 0x400;; /* required amount of stack */
 /* Specify the memory areas */
 MEMORY
 {
-FLASH (rx)      : ORIGIN = 0x8000000, LENGTH = 1024K
+FLASH (rx)      : ORIGIN = 0x8000000, LENGTH = 768K /* normally 1024. but since we use eeprom emulation this area is reserved*/
 RAM (xrw)      : ORIGIN = 0x20000000, LENGTH = 128K
 CCMRAM (rw)      : ORIGIN = 0x10000000, LENGTH = 64K
 }
@@ -114,6 +114,7 @@ SECTIONS
   /* used by the startup to initialize data */
   _sidata = LOADADDR(.data);
 
+
   /* Initialized data sections goes into RAM, load LMA copy after code */
   .data : 
   {
@@ -176,7 +177,7 @@ SECTIONS
   
 
   /* Remove information from the standard libraries */
-  /DISCARD/ :
+ /DISCARD/ :
   {
     libc.a ( * )
     libm.a ( * )
