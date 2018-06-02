@@ -114,9 +114,9 @@ typedef struct {
 #define ADC_MCU_VALUE_COUNT 3
 
 typedef struct {
-    calibration_coefficients_t channel_pos[11]; // must be the same as ADC_VALUE_COUNT, but RPC will not generate code
-    calibration_coefficients_t channel_neg[11]; // must be the same as ADC_VALUE_COUNT, but RPC will not generate code
-    calibration_coefficients_t cpu_channels[3];
+    calibration_coefficients_t channel_pos[11]; // must be the same as ADC_EXTERNAL_VALUE_COUNT, but RPC will not generate code
+    calibration_coefficients_t channel_neg[11]; // must be the same as ADC_EXTERNAL_VALUE_COUNT, but RPC will not generate code
+    calibration_coefficients_t cpu_channels[3]; // must be the same as ADC_MCU_VALUE_COUNT, but RPC will not generate code
 } calibration_t;
 
 void set_calibration_data(calibration_t calibration_data_in[1]);
