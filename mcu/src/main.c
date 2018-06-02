@@ -112,42 +112,6 @@ void initRTCInterrupt() {
     HAL_RTCEx_SetWakeUpTimer_IT(&hrtc, 1000, RTC_WAKEUPCLOCK_CK_SPRE_16BITS);
 }
 
-void keyPressHandle(key_event_t event, key_id_t id) {
-    (void)id;
-
-    if (id == kid_key1) {
-        if (event == ke_release) {
-            ledPatternSetToOff(lid_yellow, lpp_priority_1);
-            // ledPatternSetToBlink(lid_red, lpp_priority_1, 1, 10, 10, 3);
-        } else if (event == ke_pressShort) {
-            ledPatternSetToBlink(lid_yellow, lpp_priority_1, 1, 2, 10, 3);
-            // ledPatternSetToOff(lid_red, lpp_priority_1);
-        }
-    }
-    rpcKeyStatus_t keyStatus = rpcKeyStatus_none;
-    switch (event) {
-        case ke_none:
-            keyStatus = rpcKeyStatus_none;
-            break;
-        case ke_pressShort:
-            keyStatus = rpcKeyStatus_pressed;
-            break;
-        case ke_pressLong:
-            keyStatus = rpcKeyStatus_pressedLong;
-            break;
-        case ke_release:
-            keyStatus = rpcKeyStatus_released;
-            break;
-    }
-
-    RPC_RESULT result = qtKeyPressed(keyStatus);
-
-    if (result == RPC_SUCCESS) {
-        ledPatternSetToBlink(lid_red, lpp_priority_1, 1, 10, 10, 3);
-    } else {
-        ledPatternSetToOff(lid_red, lpp_priority_1);
-    }
-}
 #if 1
 static void printResetReason_t(resetReason_t reason) {
     switch (reason) {
@@ -270,7 +234,8 @@ int main(void) {
     bool hardreset = false;
     uint32_t ledstatus;
 
-    assert(ADC_VALUE_COUNT == ext_adc_value_COUNT);
+    assert(ADC_MCU_VALUE_COUNT == adsi_max - 1); //-1 becasuse we have no calibration for adsi_ref
+    assert(ADC_EXTERNAL_VALUE_COUNT == ext_adc_value_COUNT);
 
     SystemClock_Config();
     SystemCoreClockUpdate();
@@ -328,8 +293,6 @@ int main(void) {
     }
 
     keyInit();
-
-    keyRegisterHandle(&keyPressHandle);
 
 #if 0
     while (1) {

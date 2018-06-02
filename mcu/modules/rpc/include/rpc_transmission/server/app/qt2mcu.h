@@ -93,9 +93,16 @@ typedef struct {
 
     int16_t voltage_aux;
 
+    uint16_t frequency_Hz;
+    uint16_t power;
+
+    uint16_t external_current_sensor;
+    uint16_t supply_voltage;
+
+    int8_t cpu_temperature;
+
 } power_sensor_data_t;
 
-#define ADC_VALUE_COUNT ext_adc_value_COUNT
 typedef struct {
     // y = c0 + c1*x + c2*x*x
     int32_t c0_over_65536;
@@ -103,9 +110,13 @@ typedef struct {
     int32_t c2_over_65536;
 } calibration_coefficients_t;
 
+#define ADC_EXTERNAL_VALUE_COUNT 11
+#define ADC_MCU_VALUE_COUNT 3
+
 typedef struct {
-    calibration_coefficients_t channel_pos[11];
-    calibration_coefficients_t channel_neg[11];
+    calibration_coefficients_t channel_pos[11]; // must be the same as ADC_VALUE_COUNT, but RPC will not generate code
+    calibration_coefficients_t channel_neg[11]; // must be the same as ADC_VALUE_COUNT, but RPC will not generate code
+    calibration_coefficients_t cpu_channels[3];
 } calibration_t;
 
 void set_calibration_data(calibration_t calibration_data_in[1]);

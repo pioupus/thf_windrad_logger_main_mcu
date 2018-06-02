@@ -21,8 +21,11 @@
 
 #include "board.h"
 
-typedef enum{adsi_none,adsi_ref,adsi_temperature, adsi_adc1,adsi_adc2,adsi_max} adc_sequence_index_t;
+typedef enum { adsi_temperature, adsi_curr_ext, adsi_supply_sensse, adsi_ref, adsi_max } adc_sequence_index_t;
 
-void taskADC(void *pvParameters) ;
 void ADC1_IRQHandler(void);
+
+void taskADC(void *pvParameters);
+void adc_get_values(uint16_t values[adsi_max]);
+
 #endif /* MCU_INCLUDE_TASK_ADC_H_ */

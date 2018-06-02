@@ -21,8 +21,10 @@
 #include "main.h"
 #include "rpc_transmission/client/generated_app/RPC_TRANSMISSION_mcu2qt.h"
 #include "task_adc.h"
+#include "storage_calibration.h"
 #include <assert.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "channel_codec/channel_codec.h"
 
@@ -73,13 +75,32 @@ static TSCALIB_t adcCalibData;
 static SemaphoreHandle_t semaphoreADCReady;
 
 uint32_t ubat_avgsum;
-uint16_t adcValuesPlain[adsi_max - 1];
+uint16_t adcValuesPlain[adsi_max];
+uint16_t adcValues_smoothed[adsi_max];
 
-const uint32_t adcCHANNELS[] = {ADC_CHANNEL_VREFINT, ADC_CHANNEL_TEMPSENSOR, ADC_CHAN_1, ADC_CHAN_2};
+const uint32_t adcCHANNELS[] = {ADC_CHANNEL_VREFINT, ADC_CHANNEL_TEMPSENSOR, ADC_CHAN_CURR_EXT, ADC_CHAN_SUPPLY_SENSE};
 
 volatile adc_sequence_index_t adcSequenceIndex;
 
-void getFactoryTSCalibData(TSCALIB_t *data) {
+void adc_get_values(uint16_t values[adsi_max]) {
+    portENTER_CRITICAL();
+    memcpy(values, adcValues_smoothed, sizeof(adcValues_smoothed));
+
+    calibration_t *calibration = calib_get();
+
+    assert(adsi_temperature < ADC_MCU_VALUE_COUNT);
+    values[adsi_temperature] = calib_apply_calibration(values[adsi_temperature], &calibration->cpu_channels[adsi_temperature]);
+
+    assert(adsi_curr_ext < ADC_MCU_VALUE_COUNT);
+    values[adsi_curr_ext] = calib_apply_calibration(values[adsi_curr_ext], &calibration->cpu_channels[adsi_curr_ext]);
+
+    assert(adsi_supply_sensse < ADC_MCU_VALUE_COUNT);
+    values[adsi_supply_sensse] = calib_apply_calibration(values[adsi_supply_sensse], &calibration->cpu_channels[adsi_supply_sensse]);
+
+    portEXIT_CRITICAL();
+}
+
+static void getFactoryTSCalibData(TSCALIB_t *data) {
     uint32_t deviceID;
 
     deviceID = HAL_GetDEVID();
@@ -131,10 +152,10 @@ ErrorStatus testFactoryCalibData(void) {
 }
 
 /**
-  * @brief  Configures the ADC1 channel5.
-  * @param  None
-  * @retval None
-  */
+ * @brief  Configures the ADC1 channel5.
+ * @param  None
+ * @retval None
+ */
 void ADC_Config(void) {
 
     ADC_ChannelConfTypeDef sConfig;
@@ -175,11 +196,9 @@ void taskADC(void *pvParameters) {
     const uint16_t SMOOTHVALUE = 16;
     ADC_Config();
 
-    uint32_t adcValues_smoothed_SMOOTHVALUE[adsi_max - 1];
+    uint32_t adcValues_smoothed_SMOOTHVALUE[adsi_max];
 
-    uint16_t adcValues_smoothed[adsi_max - 1];
-
-    for (int i = 0; i < adsi_max - 1; i++) {
+    for (int i = 0; i < adsi_max; i++) {
         adcValues_smoothed_SMOOTHVALUE[i] = 0;
     }
     for (;;) {
@@ -191,31 +210,29 @@ void taskADC(void *pvParameters) {
             uint32_t vcc_mv = VOLT_REFERENCE_mv * adcCalibData.VREF;
             vcc_mv /= adcValuesPlain[adsi_ref - 1];
 
-            int32_t temperature_c = (int32_t)adcValuesPlain[adsi_temperature - 1] * vcc_mv;
+            int32_t temperature_c = (int32_t)adcValuesPlain[adsi_temperature] * vcc_mv;
             temperature_c /= VOLT_REFERENCE_mv;
 
             temperature_c = (110 - 30) * (temperature_c - adcCalibData.TS_CAL_1);
             temperature_c /= (adcCalibData.TS_CAL_2 - adcCalibData.TS_CAL_1);
             temperature_c += 30;
 
-            uint32_t adc1_mv = vcc_mv * adcValuesPlain[adsi_adc1 - 1];
+            uint32_t adc1_mv = vcc_mv * adcValuesPlain[adsi_curr_ext];
             adc1_mv /= ADC_MAX_VALUE_DIGIT;
 
-            uint32_t adc2_mv = vcc_mv * adcValuesPlain[adsi_adc2 - 1];
+            uint32_t adc2_mv = vcc_mv * adcValuesPlain[adsi_supply_sensse];
             adc2_mv /= ADC_MAX_VALUE_DIGIT;
 
-            adcValues_smoothed_SMOOTHVALUE[adsi_temperature - 1] += temperature_c;
-            adcValues_smoothed_SMOOTHVALUE[adsi_ref - 1] += vcc_mv;
-            adcValues_smoothed_SMOOTHVALUE[adsi_adc1 - 1] += adc1_mv;
-            adcValues_smoothed_SMOOTHVALUE[adsi_adc2 - 1] += adc2_mv;
+            adcValues_smoothed_SMOOTHVALUE[adsi_temperature] += temperature_c;
+            adcValues_smoothed_SMOOTHVALUE[adsi_ref] += vcc_mv;
+            adcValues_smoothed_SMOOTHVALUE[adsi_curr_ext] += adc1_mv;
+            adcValues_smoothed_SMOOTHVALUE[adsi_supply_sensse] += adc2_mv;
 
-            for (int i = 0; i < adsi_max - 1; i++) {
+            for (int i = 0; i < adsi_max; i++) {
                 adcValues_smoothed[i] = adcValues_smoothed_SMOOTHVALUE[i] / SMOOTHVALUE;
                 adcValues_smoothed_SMOOTHVALUE[i] -= adcValues_smoothed[i];
             }
 
-            qtUpdateMCUADCValues(adcValues_smoothed[adsi_temperature - 1], adcValues_smoothed[adsi_ref - 1], adcValues_smoothed[adsi_adc1 - 1],
-                                 adcValues_smoothed[adsi_adc2 - 1]);
             vTaskDelay((50 / portTICK_RATE_MS));
             HAL_ADC_Start_IT(&hadc);
         }
@@ -223,16 +240,16 @@ void taskADC(void *pvParameters) {
 }
 
 /**
-  * @brief  This function handles ADC1 global interrupts requests.
-  * @param  None
-  * @retval None
-  */
+ * @brief  This function handles ADC1 global interrupts requests.
+ * @param  None
+ * @retval None
+ */
 void ADC1_IRQHandler(void) {
     if (__HAL_ADC_GET_IT_SOURCE(&hadc, ADC_IT_EOC)) {
         if (__HAL_ADC_GET_FLAG(&hadc, ADC_FLAG_EOC)) {
             portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
 
-            adcValuesPlain[adcSequenceIndex - 1] = HAL_ADC_GetValue(&hadc);
+            adcValuesPlain[adcSequenceIndex] = HAL_ADC_GetValue(&hadc);
             adcSequenceIndex++;
             if (adcSequenceIndex >= adsi_max) {
                 xSemaphoreGiveFromISR(semaphoreADCReady, &xHigherPriorityTaskWoken);

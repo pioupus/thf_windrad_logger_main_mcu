@@ -13,6 +13,7 @@
 #include "storage_calibration.h"
 #include "task_key.h"
 #include "task_display.h"
+#include "task_adc.h"
 #include <assert.h>
 #include <string.h>
 
@@ -98,6 +99,16 @@ power_sensor_data_t get_power_sensor_data(void) {
     result.temperature_l1 = u3[0];
     result.temperature_l2 = u3[1];
     result.temperature_l3 = u3[2];
+
+    result.power = 0;
+    result.frequency_Hz = 0;
+
+    uint16_t values[adsi_max] = {0};
+    adc_get_values(values);
+
+    result.external_current_sensor = values[adsi_curr_ext];
+    result.supply_voltage = values[adsi_curr_ext];
+    result.cpu_temperature = values[adsi_temperature];
 
     return result;
 }

@@ -92,3 +92,12 @@ void calib_store(const calibration_t *calibration_data) {
 calibration_t *calib_get() {
     return &calibration_storage.calibration_data;
 }
+
+int32_t calib_apply_calibration(int32_t in_value, const calibration_coefficients_t *coeffs) {
+    int64_t result = 0;
+
+    result = (int64_t)coeffs->c0_over_65536 +                     //
+             (int64_t)coeffs->c1_over_65536 * (int64_t)in_value + //
+             (int64_t)coeffs->c2_over_65536 * (int64_t)in_value * (int64_t)in_value;
+    return result / 65536;
+}

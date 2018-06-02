@@ -301,15 +301,11 @@ void HAL_I2SEx_TxRxHalfCpltCallback(I2S_HandleTypeDef *hi2s) {
 int32_t apply_calibration(int32_t in_value, const calibration_t *calibration, const ext_adc_value_channel_t channel) {
     int64_t result = 0;
     if (in_value > 0) {
-        result = (int64_t)calibration->channel_pos[channel].c0_over_65536 +
-                 (int64_t)calibration->channel_pos[channel].c1_over_65536 * (int64_t)in_value +
-                 (int64_t)calibration->channel_pos[channel].c2_over_65536 * (int64_t)in_value * (int64_t)in_value;
+        result = calib_apply_calibration(in_value, &calibration->channel_pos[channel]);
     } else {
-        result = (int64_t)calibration->channel_neg[channel].c0_over_65536 +
-                 (int64_t)calibration->channel_neg[channel].c1_over_65536 * (int64_t)in_value +
-                 (int64_t)calibration->channel_neg[channel].c2_over_65536 * (int64_t)in_value * (int64_t)in_value;
+        result = calib_apply_calibration(in_value, &calibration->channel_neg[channel]);
     }
-    return result / 65536;
+    return result;
 }
 
 uint16_t abs_i16(int16_t val) {

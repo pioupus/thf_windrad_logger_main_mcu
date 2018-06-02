@@ -20,4 +20,6 @@ void calib_init();
 void calib_store(const calibration_t *calibration_data);
 calibration_t *calib_get();
 
+int32_t calib_apply_calibration(int32_t in_value, const calibration_coefficients_t *coeffs);
+
 #endif /* MCU_INCLUDE_STORAGE_CALIBRATION_H_ */
