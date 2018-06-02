@@ -27,7 +27,7 @@ void rtc_set_default_date(void) {
     RTC_DateTypeDef sDate = {0};
 
     /**Initialize RTC and set the Time and Date
-    */
+     */
 
     sTime.Hours = 0x0;
     sTime.Minutes = 0x0;
@@ -117,4 +117,54 @@ int _gettimeofday(struct timeval *tv, void *tzvp) {
     tv->tv_sec = rtc_get_date_time(); // convert to seconds
     tv->tv_usec = 0;                  // get remaining microseconds
     return 0;                         // return non-zero for error
+}
+
+void rtc_goto_standby_with_wakup_after_period(int period_s) {
+
+    /*## Configure the Wake up timer ###########################################*/
+    /*  RTC Wake-up Interrupt Generation:
+        Wake-up Time Base = (RTC_WAKEUPCLOCK_RTCCLK_DIV /(LSI))
+        Wake-up Time = Wake-up Time Base * WakeUpCounter
+                    = (RTC_WAKEUPCLOCK_RTCCLK_DIV /(LSI)) * WakeUpCounter
+        ==> WakeUpCounter = Wake-up Time / Wake-up Time Base
+
+        To configure the wake up timer to 20s the WakeUpCounter is set to 0xA017:
+          RTC_WAKEUPCLOCK_RTCCLK_DIV = RTCCLK_Div16 = 16
+          Wake-up Time Base = 16 /(~32.768KHz) = ~0,488 ms
+          Wake-up Time = ~20s = 0,488ms  * WakeUpCounter
+          ==> WakeUpCounter = ~20s/0,488ms = 40983 = 0xA017 */
+    /* Disable Wake-up timer */
+    if (HAL_RTCEx_DeactivateWakeUpTimer(&hrtc) != HAL_OK) {
+        /* Initialization Error */
+        //  Error_Handler();
+    }
+
+    /*#### Clear all related wake-up flags ######################################*/
+    /* Clear PWR wake up Flag */
+    __HAL_PWR_CLEAR_FLAG(PWR_FLAG_WU);
+
+    /* Clear RTC Wake Up timer Flag */
+    __HAL_RTC_WAKEUPTIMER_CLEAR_FLAG(&hrtc, RTC_FLAG_WUTF);
+
+    /*#### Setting the Wake up time ############################################*/
+    //    HAL_RTCEx_SetWakeUpTimer_IT(&hrtc, 0xA017, RTC_WAKEUPCLOCK_RTCCLK_DIV16);
+
+    HAL_NVIC_SetPriority(RTC_WKUP_IRQn, configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY + 1, 0);
+    HAL_RTCEx_SetWakeUpTimer_IT(&hrtc, period_s - 1, RTC_WAKEUPCLOCK_CK_SPRE_16BITS);
+
+    /*#### Enter the Standby mode ##############################################*/
+    /* Request to enter STANDBY mode  */
+    // PWR_WakeUpPinCmd(PWR_WakeUpPin_2, ENABLE);
+    // PWR_WakeUpPinCmd(PWR_WakeUpPin_1, ENABLE);
+
+    HAL_PWR_EnterSTANDBYMode();
+}
+
+void rtc_decativate_wakeup_timer(void) {
+    HAL_RTCEx_DeactivateWakeUpTimer(
+        &hrtc); // System reset, as well as low-power modes (Sleep, Stop and Standby) have no influence on the wakeup timer.
+}
+
+void RTC_WKUP_IRQHandler(void) {
+    HAL_RTCEx_WakeUpTimerIRQHandler(&hrtc);
 }

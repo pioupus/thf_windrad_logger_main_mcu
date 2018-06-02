@@ -38,7 +38,6 @@
 #include "rpc_transmission/client/generated_app/RPC_TRANSMISSION_mcu2qt.h"
 #include "rpc_transmission/server/generated_general/RPC_TRANSMISSION_network.h"
 
-#include "lowpower.h"
 #include "vc.h"
 
 channel_codec_instance_t cc_instances[channel_codec_comport_COUNT];
@@ -218,8 +217,7 @@ static resetReason_t mainTestResetSource(void) {
     RCC->CSR |= RCC_CSR_RMVF;             // Remove reset flag
     PWR->CR |= PWR_CR_CSBF | PWR_CR_CWUF; // Clear Wakeup Flag  Clear Standby Flag
 #if 1
-    HAL_RTCEx_DeactivateWakeUpTimer(
-        &hrtc); // System reset, as well as low-power modes (Sleep, Stop and Standby) have no influence on the wakeup timer.
+    rtc_decativate_wakeup_timer();
 #endif
     return result;
 }
@@ -243,6 +241,8 @@ int main(void) {
     HAL_RCC_GetPCLK2Freq();
     HAL_Init();
     rtc_init();
+    rtc_decativate_wakeup_timer();
+
     boardConfigurePIO();
 
     // CLEAR_SHUTDOWN();

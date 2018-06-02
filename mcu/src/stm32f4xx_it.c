@@ -7,8 +7,8 @@
 #include "task_adc.h"
 
 /** @addtogroup Template_Project
-  * @{
-  */
+ * @{
+ */
 
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
@@ -60,18 +60,18 @@ void prvGetRegistersFromStack(uint32_t *pulFaultStackAddress) {
 }
 
 /**
-  * @brief   This function handles NMI exception.
-  * @param  None
-  * @retval None
-  */
+ * @brief   This function handles NMI exception.
+ * @param  None
+ * @retval None
+ */
 void NMI_Handler(void) {
 }
 
 /**
-  * @brief  This function handles Hard Fault exception.
-  * @param  None
-  * @retval None
-  */
+ * @brief  This function handles Hard Fault exception.
+ * @param  None
+ * @retval None
+ */
 void HardFault_Handler(void) {
     __asm volatile(" tst lr, #4                                                \n"
                    " ite eq                                                    \n"
@@ -84,10 +84,10 @@ void HardFault_Handler(void) {
 }
 
 /**
-  * @brief  This function handles Memory Manage exception.
-  * @param  None
-  * @retval None
-  */
+ * @brief  This function handles Memory Manage exception.
+ * @param  None
+ * @retval None
+ */
 void MemManage_Handler(void) {
     /* Go to infinite loop when Memory Manage exception occurs */
     while (1) {
@@ -95,10 +95,10 @@ void MemManage_Handler(void) {
 }
 
 /**
-  * @brief  This function handles Bus Fault exception.
-  * @param  None
-  * @retval None
-  */
+ * @brief  This function handles Bus Fault exception.
+ * @param  None
+ * @retval None
+ */
 void BusFault_Handler(void) {
     /* Go to infinite loop when Bus Fault exception occurs */
     while (1) {
@@ -106,10 +106,10 @@ void BusFault_Handler(void) {
 }
 
 /**
-  * @brief  This function handles Usage Fault exception.
-  * @param  None
-  * @retval None
-  */
+ * @brief  This function handles Usage Fault exception.
+ * @param  None
+ * @retval None
+ */
 void UsageFault_Handler(void) {
     /* Go to infinite loop when Usage Fault exception occurs */
     while (1) {
@@ -117,18 +117,18 @@ void UsageFault_Handler(void) {
 }
 
 /**
-  * @brief  This function handles main I2S interrupt.
-  * @param  None
-  * @retval 0 if correct communication, else wrong communication
-  */
+ * @brief  This function handles main I2S interrupt.
+ * @param  None
+ * @retval 0 if correct communication, else wrong communication
+ */
 void DMA1_Stream7_IRQHandler(void) {
 }
 
 /**
-  * @brief  This function handles DMA Stream interrupt request.
-  * @param  None
-  * @retval None
-  */
+ * @brief  This function handles DMA Stream interrupt request.
+ * @param  None
+ * @retval None
+ */
 void DMA1_Stream3_IRQHandler(void) {
 }
 
@@ -136,28 +136,28 @@ void DMA1_Stream5_IRQHandler(void) {
     HAL_DMA_IRQHandler(hi2s3.hdmatx);
 } /* DMA1 Stream 5                */
   /**
-    * @brief  This function handles DMA Stream interrupt request.
-    * @param  None
-    * @retval None
-    */
+   * @brief  This function handles DMA Stream interrupt request.
+   * @param  None
+   * @retval None
+   */
 void DMA1_Stream2_IRQHandler(void) {
     HAL_DMA_IRQHandler(hi2s3.hdmarx);
 }
 /**
-  * @brief  This function handles SVCall exception.
-  * @param  None
-  * @retval None
-  */
+ * @brief  This function handles SVCall exception.
+ * @param  None
+ * @retval None
+ */
 //__weak
 // void SVC_Handler(void)
 //{
 //}
 
 /**
-  * @brief  This function handles Debug Monitor exception.
-  * @param  None
-  * @retval None
-  */
+ * @brief  This function handles Debug Monitor exception.
+ * @param  None
+ * @retval None
+ */
 void DebugMon_Handler(void) {
 }
 
@@ -171,8 +171,8 @@ void PVD_IRQHandler(void) {
 } /* PVD through EXTI Line detection */
 void TAMP_STAMP_IRQHandler(void) {
 } /* Tamper and TimeStamps through the EXTI line */
-void RTC_WKUP_IRQHandler(void) {
-} /* RTC Wakeup through the EXTI line */
+// void RTC_WKUP_IRQHandler(void) {
+//} /* RTC Wakeup through the EXTI line */
 void FLASH_IRQHandler(void) {
 } /* FLASH                        */
 void RCC_IRQHandler(void) {
