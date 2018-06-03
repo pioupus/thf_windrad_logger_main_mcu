@@ -38,6 +38,7 @@ SOURCES += $(SRC)/eeprom_storage.c
 SOURCES += $(SRC)/board.c
 SOURCES += $(SRC)/hd44780.c
 SOURCES += $(SRC)/task_led.c
+SOURCES += $(SRC)/task_supervisor.c
 SOURCES += $(SRC)/task_key.c
 SOURCES += $(SRC)/task_adc.c
 SOURCES += $(SRC)/task_display.c

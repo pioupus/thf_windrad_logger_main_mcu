@@ -78,6 +78,9 @@ uint32_t ubat_avgsum;
 uint16_t adcValuesPlain[adsi_max];
 uint16_t adcValues_smoothed[adsi_max];
 
+static uint16_t acquired_adc_values = 0;
+static const uint16_t VALUES_NEEDED_FOR_BEING_VALID = 16;
+
 const uint32_t adcCHANNELS[] = {ADC_CHANNEL_VREFINT, ADC_CHANNEL_TEMPSENSOR, ADC_CHAN_CURR_EXT, ADC_CHAN_SUPPLY_SENSE};
 
 volatile adc_sequence_index_t adcSequenceIndex;
@@ -191,6 +194,10 @@ void ADC_Config(void) {
     HAL_ADC_Start_IT(&hadc);
 }
 
+bool adc_values_valid() {
+    return VALUES_NEEDED_FOR_BEING_VALID < acquired_adc_values;
+}
+
 void taskADC(void *pvParameters) {
 
     const uint16_t SMOOTHVALUE = 16;
@@ -232,7 +239,9 @@ void taskADC(void *pvParameters) {
                 adcValues_smoothed[i] = adcValues_smoothed_SMOOTHVALUE[i] / SMOOTHVALUE;
                 adcValues_smoothed_SMOOTHVALUE[i] -= adcValues_smoothed[i];
             }
-
+            if (!adc_values_valid()) {
+                acquired_adc_values++;
+            }
             vTaskDelay((50 / portTICK_RATE_MS));
             HAL_ADC_Start_IT(&hadc);
         }

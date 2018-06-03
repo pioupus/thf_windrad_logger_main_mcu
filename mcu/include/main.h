@@ -29,14 +29,17 @@
 #define mainADC_TASK_STACK ((unsigned short)300)
 #define mainEXTERNAL_ADC_TASK_STACK ((unsigned short)300)
 #define mainDISPLAY_TASK_STACK ((unsigned short)300)
+#define mainSUPERVISOR_TASK_STACK ((unsigned short)300)
 
 #define mainRPC_TASK_SERIAL_PRIORITY tskIDLE_PRIORITY + 1
 #define mainLED_TASK_PRIORITY tskIDLE_PRIORITY + 4
 #define mainKEY_TASK_PRIORITY tskIDLE_PRIORITY + 3
 #define mainADC_TASK_PRIORITY tskIDLE_PRIORITY + 3
+#define mainSUPERVISOR_PRIORITY tskIDLE_PRIORITY + 3
 #define mainEXTERNAL_ADC_TASK_PRIORITY tskIDLE_PRIORITY + 3
 #define mainDISPLAY_TASK_PRIORITY tskIDLE_PRIORITY + 3
 
+#define ISR_PRIORITY_RTC configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY + 3
 #define ISR_PRIORITY_SERIAL_DBG configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY + 2
 #define ISR_PRIORITY_SERIAL_MCU configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY + 2
 #define ISR_PRIORITY_PIO configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY + 0
@@ -53,10 +56,11 @@ typedef enum { semTest = 0, semCount } t_semaphoreHandle;
 typedef enum {
     taskHandleID_RPCSerialIn,
     taskHandleID_LED,
-    // taskHandleID_key,
+    taskHandleID_key,
     taskHandleID_adc,
     taskHandleID_external_adc,
     taskHandleID_display,
+    taskHandleID_supervisor,
     taskHandleID_count
 } t_taskHandleID;
 

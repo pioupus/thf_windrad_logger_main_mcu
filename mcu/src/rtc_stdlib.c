@@ -8,6 +8,7 @@
 #include "board.h"
 #include "rtc_stdlib.h"
 #include <sys/time.h>
+#include "main.h" // for ISR_PRIORITY_RTC
 
 RTC_HandleTypeDef hrtc;
 
@@ -149,7 +150,7 @@ void rtc_goto_standby_with_wakup_after_period(int period_s) {
     /*#### Setting the Wake up time ############################################*/
     //    HAL_RTCEx_SetWakeUpTimer_IT(&hrtc, 0xA017, RTC_WAKEUPCLOCK_RTCCLK_DIV16);
 
-    HAL_NVIC_SetPriority(RTC_WKUP_IRQn, configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY + 1, 0);
+    HAL_NVIC_SetPriority(RTC_WKUP_IRQn, ISR_PRIORITY_RTC, 0);
     HAL_RTCEx_SetWakeUpTimer_IT(&hrtc, period_s - 1, RTC_WAKEUPCLOCK_CK_SPRE_16BITS);
 
     /*#### Enter the Standby mode ##############################################*/

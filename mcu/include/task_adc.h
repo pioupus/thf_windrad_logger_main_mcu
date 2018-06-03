@@ -27,5 +27,6 @@ void ADC1_IRQHandler(void);
 
 void taskADC(void *pvParameters);
 void adc_get_values(uint16_t values[adsi_max]);
+bool adc_values_valid();
 
 #endif /* MCU_INCLUDE_TASK_ADC_H_ */

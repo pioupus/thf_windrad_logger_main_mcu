@@ -346,8 +346,10 @@ typedef enum { les_none, les_on, les_off } led_state_t;
 #define CLEAR_RASP_MISO() HAL_GPIO_WritePin(GPIOC, GPIO_PIN_2, GPIO_PIN_RESET)
 
 #define PIN_RASP_IRQ                                                                                                                                 \
-    { .pinDef = {.Pin = GPIO_PIN_0, .Mode = GPIO_MODE_INPUT, .Speed = GPIO_SPEED_FREQ_MEDIUM, .Pull = GPIO_PULLDOWN}, .port = GPIOB }
+    { .pinDef = {.Pin = GPIO_PIN_0, .Mode = GPIO_MODE_OUTPUT_PP, .Speed = GPIO_SPEED_FREQ_MEDIUM, .Pull = GPIO_PULLDOWN}, .port = GPIOB }
 #define GET_RASP_IRQ() HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_0)
+#define SET_RASP_IRQ() HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_SET)
+#define CLEAR_RASP_IRQ() HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_RESET)
 
 #define PIN_RMII_REF_CLK                                                                                                                             \
     { .pinDef = {.Pin = GPIO_PIN_1, .Mode = GPIO_MODE_INPUT, .Speed = GPIO_SPEED_FREQ_MEDIUM, .Pull = GPIO_PULLDOWN}, .port = GPIOA }

@@ -33,6 +33,7 @@
 #include "task_key.h"
 #include "task_led.h"
 #include "task_display.h"
+#include "task_supervisor.h"
 #include "task_rpc_serial_in.h"
 
 #include "rpc_transmission/client/generated_app/RPC_TRANSMISSION_mcu2qt.h"
@@ -245,7 +246,7 @@ int main(void) {
 
     boardConfigurePIO();
 
-    // CLEAR_SHUTDOWN();
+    SET_SHUTDOWN(); // lets wait until supevisor task allows raspi to work
     xSerialPortInitMinimal(serCOM_DBG, 115200, 100);
     xSerialPortInitMinimal(serCOM_RPC, 115200, 300);
 
@@ -314,7 +315,7 @@ int main(void) {
     for more details. */
 
     xTaskCreate(taskLED, "LED", mainLED_TASK_STACK /*stack*/, NULL, mainLED_TASK_PRIORITY /*prior*/, &taskHandles[taskHandleID_LED]);
-    // xTaskCreate(taskKey, "KEY", mainKEY_TASK_STACK /*stack*/, NULL, mainKEY_TASK_PRIORITY /*prior*/, &taskHandles[taskHandleID_key]);
+    xTaskCreate(taskKey, "KEY", mainKEY_TASK_STACK /*stack*/, NULL, mainKEY_TASK_PRIORITY /*prior*/, &taskHandles[taskHandleID_key]);
     xTaskCreate(taskRPCSerialIn, "RPC", mainRPC_SERIAL_TASK_STACK /*stack*/, NULL, mainRPC_TASK_SERIAL_PRIORITY /*prior*/,
                 &taskHandles[taskHandleID_RPCSerialIn]);
     xTaskCreate(taskADC, "ADC", mainADC_TASK_STACK /*stack*/, NULL, mainADC_TASK_PRIORITY /*prior*/, &taskHandles[taskHandleID_adc]);
@@ -323,6 +324,9 @@ int main(void) {
 
     xTaskCreate(taskDisplay, "Display", mainDISPLAY_TASK_STACK /*stack*/, NULL, mainDISPLAY_TASK_PRIORITY /*prior*/,
                 &taskHandles[taskHandleID_display]);
+
+    xTaskCreate(taskSupervisor, "Supervisor", mainSUPERVISOR_TASK_STACK /*stack*/, NULL, mainSUPERVISOR_PRIORITY /*prior*/,
+                &taskHandles[taskHandleID_supervisor]);
 
     for (int i = 0; i < taskHandleID_count; i++) {
         if ((i != taskHandleID_RPCSerialIn))
