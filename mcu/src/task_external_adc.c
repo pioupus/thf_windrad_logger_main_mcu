@@ -59,6 +59,7 @@ static int16_t power_currents_max[i_COUNT];
 static int16_t power_voltages_average[u_COUNT];
 static uint16_t power_voltages_effective[u_COUNT];
 static uint16_t power_voltages_max[u_COUNT];
+static int32_t power_power;
 
 static uint16_t temparatures_average[3];
 
@@ -197,6 +198,7 @@ void extadc_get_voltages_max(uint16_t max[u_COUNT]) {
     portENTER_CRITICAL();
     for (int i = 0; i < u_COUNT; i++) {
         max[i] = power_voltages_max[i];
+        power_voltages_max[i] = 0;
     }
     portEXIT_CRITICAL();
 }
@@ -217,10 +219,10 @@ void extadc_get_voltages_effective(uint16_t eff[3]) {
     portEXIT_CRITICAL();
 }
 
-void extadc_get_currents_avg(int16_t max[i_COUNT]) {
+void extadc_get_currents_avg(int16_t avg[i_COUNT]) {
     portENTER_CRITICAL();
     for (int i = 0; i < i_COUNT; i++) {
-        max[i] = power_currents_average[i];
+        avg[i] = power_currents_average[i];
     }
     portEXIT_CRITICAL();
 }
@@ -236,7 +238,8 @@ void extadc_get_currents_effective(uint16_t eff[i_COUNT]) {
 void extadc_get_currents_max(uint16_t max[i_COUNT]) {
     portENTER_CRITICAL();
     for (int i = 0; i < i_COUNT; i++) {
-        max[i] = power_voltages_max[i];
+        max[i] = power_currents_max[i];
+        power_currents_max[i] = 0;
     }
     portEXIT_CRITICAL();
 }
@@ -247,6 +250,14 @@ void extadc_get_temperature_avg(uint16_t avg[3]) {
         avg[i] = temparatures_average[i];
     }
     portEXIT_CRITICAL();
+}
+
+int32_t extadc_get_power() {
+    int32_t result = 0;
+    portENTER_CRITICAL();
+    result = power_power;
+    portEXIT_CRITICAL();
+    return result;
 }
 
 void extadc_get_sample_data(int16_t samples[ADC_RECORDS_TO_BUFFER], const ext_adc_value_channel_t channel) {
@@ -341,6 +352,7 @@ void taskExternalADC(void *pvParameters) {
     uint32_t write_index = 0;
     uint32_t sample_time_stamp = 0;
     int64_t temperatures_avging[3] = {0};
+    int64_t power_avging = {0};
     int64_t currents_avging[i_COUNT] = {0};
     int64_t voltages_avging[u_COUNT] = {0};
 
@@ -357,6 +369,7 @@ void taskExternalADC(void *pvParameters) {
     const TickType_t EFFECTIVE_CALCULATION_PERIOD_LENGTH_ms = 1000 / portTICK_RATE_MS;
 
     adc_data_record_t data_record[16] = {{0}};
+
     for (;;) {
         if (xSemaphoreTake(semaphore_adc_half_buffer_ready, 100 / portTICK_RATE_MS) == pdTRUE) {
             SET_LED_YELLOW();
@@ -448,9 +461,14 @@ void taskExternalADC(void *pvParameters) {
                         adc_channels[ext_adc_value_vref][write_index].value = data_record[ext_adc_channel_raw_vref].value;
                         adc_channels[ext_adc_value_vref][write_index].time_stamp = data_record[ext_adc_channel_raw_vref].time_stamp;
                     }
+
                     for (int i = 0; i < ext_adc_value_COUNT; i++) {
                         adc_channels[i][write_index].value = apply_calibration(adc_channels[i][write_index].value, calibration_data, i);
                     }
+                    int64_t p3 = adc_channels[ext_adc_value_volt_l23][write_index].value * adc_channels[ext_adc_value_curr_l3][write_index].value;
+                    int64_t p2 = adc_channels[ext_adc_value_volt_l12][write_index].value * adc_channels[ext_adc_value_curr_l1][write_index].value;
+                    power_avging += p3 + p2;
+
                     temperatures_avging[0] += adc_channels[ext_adc_value_temp_l1][write_index].value;
                     temperatures_avging[1] += adc_channels[ext_adc_value_temp_l2][write_index].value;
                     temperatures_avging[2] += adc_channels[ext_adc_value_temp_l3][write_index].value;
@@ -539,13 +557,19 @@ void taskExternalADC(void *pvParameters) {
                         }
 
                         for (int i = 0; i < i_COUNT; i++) {
-                            power_currents_max[i] = currents_max_abs[i];
+                            if (currents_max_abs[i] > power_currents_max[i]) {
+                                power_currents_max[i] = currents_max_abs[i];
+                            }
                             currents_max_abs[i] = 0;
                         }
                         for (int i = 0; i < u_COUNT; i++) {
-                            power_voltages_max[i] = voltages_max_abs[i];
+                            if (voltages_max_abs[i] > power_voltages_max[i]) {
+                                power_voltages_max[i] = voltages_max_abs[i];
+                            }
                             voltages_max_abs[i] = 0;
                         }
+                        power_power = power_avging / effectiving_n;
+                        power_avging = 0;
                         effectiving_test_possible_overflow = 0;
                         //__asm__("BKPT");
                         effective_calculation_period_start_ms = xTaskGetTickCount();

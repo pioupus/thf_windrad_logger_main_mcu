@@ -100,7 +100,7 @@ power_sensor_data_t get_power_sensor_data(void) {
     result.temperature_l2 = u3[1];
     result.temperature_l3 = u3[2];
 
-    result.power = 0;
+    result.power = extadc_get_power();
     result.frequency_Hz = 0;
 
     uint16_t values[adsi_max] = {0};

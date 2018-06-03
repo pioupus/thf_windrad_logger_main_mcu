@@ -40,6 +40,7 @@ void extadc_get_currents_effective(uint16_t eff[i_COUNT]);
 void extadc_get_currents_max(uint16_t max[i_COUNT]);
 
 void extadc_get_temperature_avg(uint16_t avg[3]);
+int32_t extadc_get_power();
 
 void extadc_start_acquire_sample_data();
 bool extadc_is_sample_data_complete();
