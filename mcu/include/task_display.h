@@ -12,7 +12,7 @@
 #include "task.h"
 #include "board.h"
 
-typedef enum { screen_boot, screen_iup, screen_custom, screen_COUNT } screen_id_t;
+typedef enum { screen_boot, screen_iu, screen_pbt, screen_custom, screen_COUNT } screen_id_t;
 
 void display_set_screen(screen_id_t new_screen_id);
 screen_id_t display_get_current_screen(void);

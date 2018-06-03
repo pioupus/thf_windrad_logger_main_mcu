@@ -8,6 +8,7 @@
 #include "hd44780.h"
 #include "task_display.h"
 #include "task_external_adc.h"
+#include "task_adc.h"
 #include <assert.h>
 #include "vc.h"
 #include <time.h>
@@ -18,6 +19,8 @@ const uint8_t TABLE_3_COL_2 = 10;
 const uint8_t TABLE_3_COL_3 = 15;
 
 screen_id_t current_screen_id = -1;
+
+static const uint16_t SWITCH_SCREEN_INTERVAL = 10;
 
 static uint8_t custom_screen_buffer[_LCD_ROWS][_LCD_COLS];
 
@@ -47,7 +50,7 @@ static void display_screen_custom_update() {
     lcd_printf_at(0, 3, "%s", custom_screen_buffer[3][0]);
 }
 
-static void display_screen_iup_background() {
+static void display_screen_iu_background() {
     lcd_putc('\f');
     lcd_printf_at(TABLE_3_COL_1, 0, "Uavg");
     lcd_printf_at(TABLE_3_COL_2, 0, "Iavg");
@@ -57,8 +60,13 @@ static void display_screen_iup_background() {
     lcd_printf_at(0, 3, "L3");
 }
 
-static void display_screen_iup_update() {
-    static uint8_t i;
+static void display_screen_iu_update() {
+    static int update_count = 0;
+    if (update_count > SWITCH_SCREEN_INTERVAL) {
+        display_set_screen(screen_pbt);
+        update_count = 0;
+        return;
+    }
 
     int16_t u_avg[u_COUNT] = {0};
     uint16_t u_eff[3] = {0};
@@ -97,6 +105,44 @@ static void display_screen_iup_update() {
 
     lcd_printf_at(TABLE_3_COL_3, 3, "     ");
     lcd_printf_at(TABLE_3_COL_3, 3, "%d", i_eff[i_l3]);
+}
+
+static void display_screen_pbt_background() {
+    lcd_putc('\f');
+    lcd_printf_at(0, 0, "Time");
+    lcd_printf_at(0, 1, "Pwr");
+    lcd_printf_at(0, 2, "Ubat");
+    lcd_printf_at(0, 3, "Temp");
+    lcd_printf_at(10, 3, "DCCurr");
+}
+
+static void display_screen_pbt_update() {
+    static int update_count = 0;
+    if (update_count > SWITCH_SCREEN_INTERVAL) {
+        display_set_screen(screen_iu);
+        update_count = 0;
+        return;
+    }
+    int32_t power = extadc_get_power();
+
+    uint16_t values[adsi_max] = {0};
+    adc_get_values(values);
+
+    int32_t u_supply = values[adsi_supply_sensse];
+    int32_t temperature = values[adsi_temperature];
+    int32_t ext_current = values[adsi_curr_ext];
+
+    lcd_printf_at(TABLE_3_COL_1, 1, "     ");
+    lcd_printf_at(TABLE_3_COL_1, 1, "%d", power);
+
+    lcd_printf_at(TABLE_3_COL_1, 2, "     ");
+    lcd_printf_at(TABLE_3_COL_1, 2, "%d", u_supply);
+
+    lcd_printf_at(TABLE_3_COL_1, 3, "     ");
+    lcd_printf_at(TABLE_3_COL_1, 3, "%d", temperature);
+
+    lcd_printf_at(10 + 5, 3, "     ");
+    lcd_printf_at(10 + 5, 3, "%d", ext_current);
 
     time_t t = time(0);
     struct tm printTm = *(localtime(&t));
@@ -123,11 +169,16 @@ const screen_description_t screen_instruction_table[] = {
      .update_interval_ms = 5000,
      .paint_function = &display_screen_boot_background,
      .update_function = &display_screen_boot_update},
-    {.id = screen_iup, //
+    {.id = screen_iu, //
      .update_interval_ms = 1000,
-     .paint_function = &display_screen_iup_background,
-     .update_function = &display_screen_iup_update}, //
-    {.id = screen_custom,                            //
+     .paint_function = &display_screen_iu_background,
+     .update_function = &display_screen_iu_update}, //
+    {.id = screen_pbt,                              //
+     .update_interval_ms = 1000,
+     .paint_function = &display_screen_pbt_background,
+     .update_function = &display_screen_pbt_update}, //
+
+    {.id = screen_custom, //
      .update_interval_ms = 1000,
      .paint_function = &display_screen_custom_background,
      .update_function = &display_screen_custom_update} //
@@ -160,7 +211,7 @@ void taskDisplay(void *pvParameters) {
     display_set_screen(screen_boot);
     vTaskDelay((screen_instruction_table[screen_boot].update_interval_ms / portTICK_RATE_MS));
 
-    display_set_screen(screen_iup);
+    display_set_screen(screen_iu);
     while (1) {
         screen_instruction_table[current_screen_id].update_function();
         vTaskDelay((screen_instruction_table[current_screen_id].update_interval_ms / portTICK_RATE_MS));
