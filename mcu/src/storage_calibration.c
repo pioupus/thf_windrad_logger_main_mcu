@@ -60,10 +60,14 @@ static HAL_StatusTypeDef calib_load() {
 }
 
 static void calib_load_default() {
-    calibration_t calibration_data = {.channel_neg = {{0}}, .channel_pos = {{0}}};
+    calibration_t calibration_data = {.channel_neg = {{0}}, .channel_pos = {{0}}, .cpu_channels = {{0}}};
     for (int i = 0; i < ext_adc_value_COUNT; i++) {
         calibration_data.channel_neg[i].c1_over_65536 = 65536;
         calibration_data.channel_pos[i].c1_over_65536 = 65536;
+    }
+
+    for (int i = 0; i < ADC_MCU_VALUE_COUNT; i++) {
+        calibration_data.cpu_channels[i].c1_over_65536 = 65536;
     }
 
     calib_store(&calibration_data);

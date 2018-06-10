@@ -95,6 +95,17 @@ void boardConfigurePIO(void) {
     }
 }
 
+void SET_SHUTDOWN() {
+    static pinGPIO_t shutdown_pin_as_input = PIN_SHUTDOWN_IN;
+    boardInitPin(&shutdown_pin_as_input);
+}
+
+void CLEAR_SHUTDOWN() {
+    static pinGPIO_t shutdown_pin_as_output = PIN_SHUTDOWN;
+    boardInitPin(&shutdown_pin_as_output);
+    CLEAR_SHUTDOWN_();
+}
+
 void boardInitPin(const pinGPIO_t *pin) {
     HAL_GPIO_Init(pin->port, (GPIO_InitTypeDef *)&pin->pinDef);
 }

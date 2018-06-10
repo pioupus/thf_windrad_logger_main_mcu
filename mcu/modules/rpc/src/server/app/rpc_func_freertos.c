@@ -33,7 +33,7 @@ uint8_t is_sample_data_complete(void) {
     return extadc_is_sample_data_complete();
 }
 
-void get_sample_data(int16_t samples_out[128], adc_sample_channel_t channel) {
+void get_sample_data(int16_t samples_out[128], ext_adc_value_channel_t channel) {
     extadc_get_sample_data(samples_out, channel);
 #if 0
     static int16_t val = 0;
@@ -107,8 +107,9 @@ power_sensor_data_t get_power_sensor_data(void) {
     adc_get_values(values);
 
     result.external_current_sensor = values[adsi_curr_ext];
-    result.supply_voltage = values[adsi_curr_ext];
+    result.supply_voltage = values[adsi_supply_sensse];
     result.cpu_temperature = values[adsi_temperature];
+    result.coin_cell_mv = values[adsi_coin_cell];
 
     return result;
 }
@@ -156,4 +157,8 @@ void display_clear_and_set_custom_screen(void) {
     display_custom_screen_clear();
     last_screen_id = display_get_current_screen();
     display_set_screen(screen_custom);
+}
+
+void display_set_sysstat_screen(uint8_t count_of_screens, uint8_t screen_index, uint8_t row, uint8_t text_in[20]) {
+    display_set_sysstat_screen_(count_of_screens, screen_index, row, text_in);
 }

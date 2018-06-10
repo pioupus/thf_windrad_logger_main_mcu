@@ -165,8 +165,13 @@ typedef enum { les_none, les_on, les_off } led_state_t;
 
 #define PIN_SHUTDOWN                                                                                                                                 \
     { .pinDef = {.Pin = GPIO_PIN_10, .Mode = GPIO_MODE_OUTPUT_PP, .Speed = GPIO_SPEED_FREQ_MEDIUM, .Pull = GPIO_NOPULL}, .port = GPIOE }
-#define SET_SHUTDOWN() HAL_GPIO_WritePin(GPIOE, GPIO_PIN_10, GPIO_PIN_SET)
-#define CLEAR_SHUTDOWN() HAL_GPIO_WritePin(GPIOE, GPIO_PIN_10, GPIO_PIN_RESET)
+
+#define PIN_SHUTDOWN_IN                                                                                                                              \
+    { .pinDef = {.Pin = GPIO_PIN_10, .Mode = GPIO_MODE_INPUT, .Speed = GPIO_SPEED_FREQ_MEDIUM, .Pull = GPIO_PULLUP}, .port = GPIOE }
+#define SET_SHUTDOWN_() HAL_GPIO_WritePin(GPIOE, GPIO_PIN_10, GPIO_PIN_SET)
+#define CLEAR_SHUTDOWN_() HAL_GPIO_WritePin(GPIOE, GPIO_PIN_10, GPIO_PIN_RESET)
+void SET_SHUTDOWN(void);
+void CLEAR_SHUTDOWN(void);
 
 #define PIN_SUPPLY_SENSE                                                                                                                             \
     { .pinDef = {.Pin = GPIO_PIN_1, .Mode = GPIO_MODE_ANALOG, .Speed = GPIO_SPEED_FREQ_MEDIUM, .Pull = GPIO_PULLDOWN}, .port = GPIOB }

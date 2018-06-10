@@ -20,6 +20,11 @@ const uint8_t TABLE_3_COL_3 = 15;
 
 screen_id_t current_screen_id = -1;
 
+#define COUNT_OF_POSSIBLE_SYSSTAT_SCREENS 3
+
+static uint8_t sysstat_screen[COUNT_OF_POSSIBLE_SYSSTAT_SCREENS][_LCD_ROWS][_LCD_COLS];
+static uint8_t used_sysstat_screens = 0;
+
 static const uint16_t SWITCH_SCREEN_INTERVAL = 10;
 
 static uint8_t custom_screen_buffer[_LCD_ROWS][_LCD_COLS];
@@ -39,15 +44,40 @@ void display_custom_screen_clear() {
     memset(custom_screen_buffer, 0, sizeof(custom_screen_buffer));
 }
 
+void display_set_sysstat_screen_(uint8_t count_of_screens, uint8_t screen_index, uint8_t row, uint8_t text[20]) {
+    assert(count_of_screens <= COUNT_OF_POSSIBLE_SYSSTAT_SCREENS);
+    assert(screen_index < COUNT_OF_POSSIBLE_SYSSTAT_SCREENS);
+
+    used_sysstat_screens = count_of_screens;
+
+    memcpy(sysstat_screen[screen_index][row], text, _LCD_COLS);
+}
+
 static void display_screen_custom_background() {
 }
 
 static void display_screen_custom_update() {
     lcd_putc('\f');
-    lcd_printf_at(0, 0, "%s", custom_screen_buffer[0][0]);
-    lcd_printf_at(0, 1, "%s", custom_screen_buffer[1][0]);
-    lcd_printf_at(0, 2, "%s", custom_screen_buffer[2][0]);
-    lcd_printf_at(0, 3, "%s", custom_screen_buffer[3][0]);
+    for (int i = 0; i < 4; i++) {
+        lcd_printf_at(0, i, "%s", custom_screen_buffer[i][0]);
+    }
+}
+
+static void display_screen_sys_stat_background() {
+}
+
+static void display_screen_sys_stat_update() {
+    static uint8_t current_sysstat_screens_index = 0;
+    current_sysstat_screens_index++;
+    if (current_sysstat_screens_index > used_sysstat_screens) {
+        display_set_screen(screen_iu);
+        current_sysstat_screens_index = 0;
+        return;
+    }
+    lcd_putc('\f');
+    for (int i = 0; i < 4; i++) {
+        lcd_printf_at(0, i, "%s", sysstat_screen[current_sysstat_screens_index - 1][i]);
+    }
 }
 
 static void display_screen_iu_background() {
@@ -62,6 +92,7 @@ static void display_screen_iu_background() {
 
 static void display_screen_iu_update() {
     static int update_count = 0;
+    update_count++;
     if (update_count > SWITCH_SCREEN_INTERVAL) {
         display_set_screen(screen_pbt);
         update_count = 0;
@@ -111,15 +142,17 @@ static void display_screen_pbt_background() {
     lcd_putc('\f');
     lcd_printf_at(0, 0, "Time");
     lcd_printf_at(0, 1, "Pwr");
-    lcd_printf_at(0, 2, "Ubat");
+    lcd_printf_at(0, 2, "USup");
+    lcd_printf_at(10, 2, "UBuf");
     lcd_printf_at(0, 3, "Temp");
-    lcd_printf_at(10, 3, "DCCurr");
+    lcd_printf_at(10, 3, "DCI");
 }
 
 static void display_screen_pbt_update() {
     static int update_count = 0;
+    update_count++;
     if (update_count > SWITCH_SCREEN_INTERVAL) {
-        display_set_screen(screen_iu);
+        display_set_screen(screen_sysstat);
         update_count = 0;
         return;
     }
@@ -131,12 +164,16 @@ static void display_screen_pbt_update() {
     int32_t u_supply = values[adsi_supply_sensse];
     int32_t temperature = values[adsi_temperature];
     int32_t ext_current = values[adsi_curr_ext];
+    int32_t u_coin = values[adsi_coin_cell];
 
     lcd_printf_at(TABLE_3_COL_1, 1, "     ");
     lcd_printf_at(TABLE_3_COL_1, 1, "%d", power);
 
     lcd_printf_at(TABLE_3_COL_1, 2, "     ");
     lcd_printf_at(TABLE_3_COL_1, 2, "%d", u_supply);
+
+    lcd_printf_at(10 + 5, 2, "     ");
+    lcd_printf_at(10 + 5, 2, "%d", u_coin);
 
     lcd_printf_at(TABLE_3_COL_1, 3, "     ");
     lcd_printf_at(TABLE_3_COL_1, 3, "%d", temperature);
@@ -148,7 +185,7 @@ static void display_screen_pbt_update() {
     struct tm printTm = *(localtime(&t));
     char buffer[20] = {0};
     // strftime(buffer, 20, "%m/%d/%y %H:%M:%S", &printTm);
-    strftime(buffer, 20, "%H:%M:%S", &printTm);
+    strftime(buffer, 20, "%y/%m/%d/ %H:%M:%S", &printTm);
     lcd_printf_at(0, 0, "%s\r\n", buffer);
 }
 
@@ -177,6 +214,11 @@ const screen_description_t screen_instruction_table[] = {
      .update_interval_ms = 1000,
      .paint_function = &display_screen_pbt_background,
      .update_function = &display_screen_pbt_update}, //
+
+    {.id = screen_sysstat, //
+     .update_interval_ms = 2000,
+     .paint_function = &display_screen_sys_stat_background,
+     .update_function = &display_screen_sys_stat_update}, //
 
     {.id = screen_custom, //
      .update_interval_ms = 1000,

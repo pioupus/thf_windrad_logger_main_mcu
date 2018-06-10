@@ -39,6 +39,8 @@
     (int32_t)50 /* difference of hot-cold calib                                                                                                      \
  data to be considered as valid */
 
+#define VBAT_FACTOR_407VGT6 2
+
 /*
 STM32L151RET6:
 VREFINT_CAL 	0x1FF8 00F8 - 0x1FF8 00F9 	Raw data acquired at temperature of 30C �5 C VDDA= 3 V �10 mV
@@ -71,8 +73,13 @@ typedef struct {
     uint16_t TS_CAL_2; // high temperature calibration data
 } TSCALIB_t;
 
+typedef struct {
+    adc_sequence_index_t index;
+    uint16_t value;
+} conversion_result_t;
+
 static TSCALIB_t adcCalibData;
-static SemaphoreHandle_t semaphoreADCReady;
+static QueueHandle_t adcConversionsQueue;
 
 uint32_t ubat_avgsum;
 uint16_t adcValuesPlain[adsi_max];
@@ -81,7 +88,7 @@ uint16_t adcValues_smoothed[adsi_max];
 static uint16_t acquired_adc_values = 0;
 static const uint16_t VALUES_NEEDED_FOR_BEING_VALID = 16;
 
-const uint32_t adcCHANNELS[] = {ADC_CHANNEL_VREFINT, ADC_CHANNEL_TEMPSENSOR, ADC_CHAN_CURR_EXT, ADC_CHAN_SUPPLY_SENSE};
+const uint32_t adcCHANNELS[] = {ADC_CHANNEL_TEMPSENSOR, ADC_CHAN_CURR_EXT, ADC_CHAN_SUPPLY_SENSE, ADC_CHANNEL_VBAT, ADC_CHANNEL_VREFINT};
 
 volatile adc_sequence_index_t adcSequenceIndex;
 
@@ -154,6 +161,18 @@ ErrorStatus testFactoryCalibData(void) {
     return retval;
 }
 
+static void startConversion(adc_sequence_index_t channelindex) {
+    // if (adc_running == false) {
+    ADC_ChannelConfTypeDef sConfig = {0};
+    sConfig.Channel = adcCHANNELS[channelindex];
+    sConfig.Rank = 1;
+    sConfig.SamplingTime = ADC_SAMPLETIME_144CYCLES;
+    HAL_ADC_ConfigChannel(&hadc, &sConfig);
+    adcSequenceIndex = channelindex;
+    //  adc_running = true;
+    HAL_ADC_Start_IT(&hadc);
+}
+
 /**
  * @brief  Configures the ADC1 channel5.
  * @param  None
@@ -163,35 +182,31 @@ void ADC_Config(void) {
 
     ADC_ChannelConfTypeDef sConfig;
 
-    semaphoreADCReady = xSemaphoreCreateBinary();
-
-    if (testFactoryCalibData() == SUCCESS)
+    if (testFactoryCalibData() == SUCCESS) {
         getFactoryTSCalibData(&adcCalibData);
+    }
 
     hadc.Instance = ADC1;
     hadc.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV2;
     hadc.Init.Resolution = ADC_RESOLUTION_12B;
     hadc.Init.DataAlign = ADC_DATAALIGN_RIGHT;
-    hadc.Init.ScanConvMode = DISABLE;
+    hadc.Init.ScanConvMode = ENABLE;
     hadc.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
     hadc.Init.ContinuousConvMode = DISABLE;
-    hadc.Init.NbrOfConversion = adsi_max - 1;
+    hadc.Init.NbrOfConversion = 1;
     hadc.Init.DiscontinuousConvMode = DISABLE;
     hadc.Init.ExternalTrigConv = ADC_SOFTWARE_START;
     hadc.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
     hadc.Init.DMAContinuousRequests = DISABLE;
+
     HAL_ADC_Init(&hadc);
 
-    for (int i = 0; i < adsi_max - 1; i++) {
+    for (int i = 0; i < adsi_max; i++) {
         sConfig.Channel = adcCHANNELS[i];
         sConfig.Rank = i + 1;
         sConfig.SamplingTime = ADC_SAMPLETIME_144CYCLES;
         HAL_ADC_ConfigChannel(&hadc, &sConfig);
     }
-
-    adcSequenceIndex = 1;
-
-    HAL_ADC_Start_IT(&hadc);
 }
 
 bool adc_values_valid() {
@@ -203,49 +218,90 @@ void taskADC(void *pvParameters) {
     const uint16_t SMOOTHVALUE = 16;
     ADC_Config();
 
+    adcConversionsQueue = xQueueCreate(10, sizeof(conversion_result_t));
+
     uint32_t adcValues_smoothed_SMOOTHVALUE[adsi_max];
 
     for (int i = 0; i < adsi_max; i++) {
         adcValues_smoothed_SMOOTHVALUE[i] = 0;
     }
+
+    startConversion(0);
+
     for (;;) {
+        conversion_result_t conversion_result = {0};
+        if (xQueueReceive(adcConversionsQueue, &conversion_result, 500 / portTICK_RATE_MS) == pdTRUE) {
+            //        if (xSemaphoreTake(semaphoreADCReady, 1000 / portTICK_RATE_MS) == pdTRUE) {
 
-        if (xSemaphoreTake(semaphoreADCReady, 1000 / portTICK_RATE_MS) == pdTRUE) {
-            const int32_t VOLT_REFERENCE_mv = 3000;
-            const int32_t ADC_MAX_VALUE_DIGIT = 4095;
+            adcValuesPlain[conversion_result.index] = conversion_result.value;
+            if (conversion_result.index == adsi_ref) {
+                const int32_t VOLT_REFERENCE_mv = 3300;
+                const int32_t ADC_MAX_VALUE_DIGIT = 4095;
 
-            uint32_t vcc_mv = VOLT_REFERENCE_mv * adcCalibData.VREF;
-            vcc_mv /= adcValuesPlain[adsi_ref - 1];
+                uint32_t ref_voltage_mv = VOLT_REFERENCE_mv * adcCalibData.VREF;
+                ref_voltage_mv /= adcValuesPlain[adsi_ref];
 
-            int32_t temperature_c = (int32_t)adcValuesPlain[adsi_temperature] * vcc_mv;
-            temperature_c /= VOLT_REFERENCE_mv;
+                int32_t temperature_c = (int32_t)adcValuesPlain[adsi_temperature] * ref_voltage_mv;
+                temperature_c /= VOLT_REFERENCE_mv;
 
-            temperature_c = (110 - 30) * (temperature_c - adcCalibData.TS_CAL_1);
-            temperature_c /= (adcCalibData.TS_CAL_2 - adcCalibData.TS_CAL_1);
-            temperature_c += 30;
+                temperature_c = (110 - 30) * (temperature_c - adcCalibData.TS_CAL_1);
+                temperature_c /= (adcCalibData.TS_CAL_2 - adcCalibData.TS_CAL_1);
+                temperature_c += 30;
 
-            uint32_t adc1_mv = vcc_mv * adcValuesPlain[adsi_curr_ext];
-            adc1_mv /= ADC_MAX_VALUE_DIGIT;
+                uint32_t adc1_mv = ref_voltage_mv * adcValuesPlain[adsi_curr_ext];
+                adc1_mv /= ADC_MAX_VALUE_DIGIT;
 
-            uint32_t adc2_mv = vcc_mv * adcValuesPlain[adsi_supply_sensse];
-            adc2_mv /= ADC_MAX_VALUE_DIGIT;
+                uint32_t adc2_mv = ref_voltage_mv * adcValuesPlain[adsi_supply_sensse];
+                adc2_mv /= ADC_MAX_VALUE_DIGIT;
 
-            adcValues_smoothed_SMOOTHVALUE[adsi_temperature] += temperature_c;
-            adcValues_smoothed_SMOOTHVALUE[adsi_ref] += vcc_mv;
-            adcValues_smoothed_SMOOTHVALUE[adsi_curr_ext] += adc1_mv;
-            adcValues_smoothed_SMOOTHVALUE[adsi_supply_sensse] += adc2_mv;
+                uint32_t coin_cell_mv = ref_voltage_mv * adcValuesPlain[adsi_coin_cell] * VBAT_FACTOR_407VGT6;
+                coin_cell_mv /= ADC_MAX_VALUE_DIGIT;
 
-            for (int i = 0; i < adsi_max; i++) {
-                adcValues_smoothed[i] = adcValues_smoothed_SMOOTHVALUE[i] / SMOOTHVALUE;
-                adcValues_smoothed_SMOOTHVALUE[i] -= adcValues_smoothed[i];
+                adcValues_smoothed_SMOOTHVALUE[adsi_temperature] += temperature_c;
+                adcValues_smoothed_SMOOTHVALUE[adsi_ref] += ref_voltage_mv;
+                adcValues_smoothed_SMOOTHVALUE[adsi_curr_ext] += adc1_mv;
+                adcValues_smoothed_SMOOTHVALUE[adsi_supply_sensse] += adc2_mv;
+                adcValues_smoothed_SMOOTHVALUE[adsi_coin_cell] += coin_cell_mv;
+
+                for (int i = 0; i < adsi_max; i++) {
+                    adcValues_smoothed[i] = adcValues_smoothed_SMOOTHVALUE[i] / SMOOTHVALUE;
+                    adcValues_smoothed_SMOOTHVALUE[i] -= adcValues_smoothed[i];
+                }
+                if (!adc_values_valid()) {
+                    acquired_adc_values++;
+                }
+                vTaskDelay((100 / portTICK_RATE_MS));
+                conversion_result.index = 0;
+            } else {
+                conversion_result.index++;
             }
-            if (!adc_values_valid()) {
-                acquired_adc_values++;
-            }
-            vTaskDelay((50 / portTICK_RATE_MS));
-            HAL_ADC_Start_IT(&hadc);
+            startConversion(conversion_result.index);
         }
     }
+}
+
+static portBASE_TYPE xHigherPriorityTaskWoken_ByADC_interrupt = pdFALSE;
+
+void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc) {
+#if 0
+    	xHigherPriorityTaskWoken_ByADC_interrupt = pdFALSE;
+        adcValuesPlain[adcSequenceIndex] = HAL_ADC_GetValue(hadc);
+        adcSequenceIndex++;
+        if (adcSequenceIndex >= adsi_max) {
+            xSemaphoreGiveFromISR(semaphoreADCReady, &xHigherPriorityTaskWoken_ByADC_interrupt);
+            adcSequenceIndex = 1;
+        } else {
+            hadc->Instance->CR2 |= (uint32_t)ADC_CR2_SWSTART;
+        }
+#else
+
+    conversion_result_t conversion_result = {0};
+
+    conversion_result.value = HAL_ADC_GetValue(hadc);
+    conversion_result.index = adcSequenceIndex;
+
+    xQueueSendFromISR(adcConversionsQueue, &conversion_result, &xHigherPriorityTaskWoken_ByADC_interrupt);
+#endif
 }
 
 /**
@@ -254,6 +310,10 @@ void taskADC(void *pvParameters) {
  * @retval None
  */
 void ADC1_IRQHandler(void) {
+    HAL_ADC_IRQHandler(&hadc);
+    portEND_SWITCHING_ISR(xHigherPriorityTaskWoken_ByADC_interrupt);
+
+#if 0
     if (__HAL_ADC_GET_IT_SOURCE(&hadc, ADC_IT_EOC)) {
         if (__HAL_ADC_GET_FLAG(&hadc, ADC_FLAG_EOC)) {
             portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
@@ -268,4 +328,5 @@ void ADC1_IRQHandler(void) {
             portEND_SWITCHING_ISR(xHigherPriorityTaskWoken);
         }
     }
+#endif
 }

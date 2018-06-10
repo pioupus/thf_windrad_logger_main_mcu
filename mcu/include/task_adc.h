@@ -21,7 +21,7 @@
 
 #include "board.h"
 
-typedef enum { adsi_temperature, adsi_curr_ext, adsi_supply_sensse, adsi_ref, adsi_max } adc_sequence_index_t;
+typedef enum { adsi_temperature, adsi_curr_ext, adsi_supply_sensse, adsi_coin_cell, adsi_ref, adsi_max } adc_sequence_index_t;
 
 void ADC1_IRQHandler(void);
 

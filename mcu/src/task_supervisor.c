@@ -52,8 +52,10 @@ void superisor_check_supply_voltage() {
     }
     if (time_of_shutdown_command_s) {
         if ((time_of_shutdown_command_s + TIME_FOR_RASPI_TO_SHUTDOWN_s) < ((xTaskGetTickCount() / portTICK_RATE_MS)) / 1000) {
-            SET_SHUTDOWN();
-            rtc_goto_standby_with_wakup_after_period(WAKEUPT_TIME_TO_PROBE_SUPPLY_VOLTAGE_s);
+#if 0
+        	SET_SHUTDOWN();
+              rtc_goto_standby_with_wakup_after_period(WAKEUPT_TIME_TO_PROBE_SUPPLY_VOLTAGE_s);
+#endif
         }
     }
 }

@@ -246,9 +246,9 @@ int main(void) {
 
     boardConfigurePIO();
 
-    SET_SHUTDOWN(); // lets wait until supevisor task allows raspi to work
+    // SET_SHUTDOWN(); // lets wait until supevisor task allows raspi to work
     xSerialPortInitMinimal(serCOM_DBG, 115200, 100);
-    xSerialPortInitMinimal(serCOM_RPC, 115200, 300);
+    xSerialPortInitMinimal(serCOM_RPC, 115200, 400);
 
     SET_LED_COM_BOT_GREEN();
     SET_LED_COM_BOT_YELLOW();
@@ -286,13 +286,14 @@ int main(void) {
         HAL_RTCEx_DeactivateWakeUpTimer(&hrtc);
 
     } else if (mainResetReason == rer_resetPin) {
+#if 0
         MX_RTC_Init();
         RTC_SetToDefaulDate();
         for (uint32_t i = 0; i < RTC_BKP_DR19; i++) {
             HAL_RTCEx_BKUPWrite(&hrtc, i, 0);
         }
+#endif
     }
-
     keyInit();
 
 #if 0

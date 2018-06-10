@@ -31,24 +31,6 @@ typedef enum {
     ext_adc_value_COUNT
 } ext_adc_value_channel_t;
 
-typedef enum {
-    adc_sample_channel_curr_l1,
-    adc_sample_channel_curr_l2,
-    adc_sample_channel_curr_l3,
-
-    adc_sample_channel_vref,
-
-    adc_sample_channel_volt_l12,
-    adc_sample_channel_volt_l23,
-    adc_sample_channel_volt_l31,
-
-    adc_sample_channel_aux_volt,
-
-    adc_sample_channel_temp_l1,
-    adc_sample_channel_temp_l2,
-    adc_sample_channel_temp_l3
-} adc_sample_channel_t;
-
 typedef enum { kid_none, kid_key3, kid_key2, kid_key1, kid_onoff, kid_KEYCOUNT } key_id_t;
 
 typedef struct {
@@ -100,6 +82,7 @@ typedef struct {
     uint16_t supply_voltage;
 
     int8_t cpu_temperature;
+    uint16_t coin_cell_mv;
 
 } power_sensor_data_t;
 
@@ -111,12 +94,12 @@ typedef struct {
 } calibration_coefficients_t;
 
 #define ADC_EXTERNAL_VALUE_COUNT 11
-#define ADC_MCU_VALUE_COUNT 3
+#define ADC_MCU_VALUE_COUNT 4
 
 typedef struct {
     calibration_coefficients_t channel_pos[11]; // must be the same as ADC_EXTERNAL_VALUE_COUNT, but RPC will not generate code
     calibration_coefficients_t channel_neg[11]; // must be the same as ADC_EXTERNAL_VALUE_COUNT, but RPC will not generate code
-    calibration_coefficients_t cpu_channels[3]; // must be the same as ADC_MCU_VALUE_COUNT, but RPC will not generate code
+    calibration_coefficients_t cpu_channels[4]; // must be the same as ADC_MCU_VALUE_COUNT, but RPC will not generate code
 } calibration_t;
 
 void set_calibration_data(calibration_t calibration_data_in[1]);
@@ -125,7 +108,7 @@ calibration_t get_calibration_data(void);
 
 void acquire_sample_data(void);
 uint8_t is_sample_data_complete(void);
-void get_sample_data(int16_t samples_out[128], adc_sample_channel_t channel);
+void get_sample_data(int16_t samples_out[128], ext_adc_value_channel_t channel);
 
 power_sensor_data_t get_power_sensor_data(void);
 
@@ -139,6 +122,8 @@ uint8_t get_last_key_state(key_id_t key_id, uint8_t reset_key_memory);
 void display_return_to_normal_screen(void);
 void display_write_text(uint8_t row, uint8_t text_in[20]);
 void display_clear_and_set_custom_screen(void);
+
+void display_set_sysstat_screen(uint8_t count_of_screens, uint8_t screen_index, uint8_t row, uint8_t text_in[20]);
 
 #endif
 
