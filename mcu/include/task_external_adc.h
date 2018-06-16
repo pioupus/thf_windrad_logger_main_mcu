@@ -29,7 +29,7 @@ typedef struct {
 } ext_adc_temperatures_t;
 
 typedef enum { i_l1, i_l2, i_l3, i_COUNT } current_index_t;
-typedef enum { u_l12, u_l23, u_l31, u_aux, u_COUNT } voltage_index_t;
+typedef enum { u_l21, u_l32, u_l13, u_aux, u_COUNT } voltage_index_t;
 
 void extadc_get_voltages_avg(int16_t avg[u_COUNT]);
 void extadc_get_voltages_effective(uint16_t eff[3]);

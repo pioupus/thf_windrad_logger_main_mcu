@@ -93,12 +93,13 @@ static void display_screen_iu_background() {
 static void display_screen_iu_update() {
     static int update_count = 0;
     update_count++;
+#if 1
     if (update_count > SWITCH_SCREEN_INTERVAL) {
         display_set_screen(screen_pbt);
         update_count = 0;
         return;
     }
-
+#endif
     int16_t u_avg[u_COUNT] = {0};
     uint16_t u_eff[3] = {0};
     int16_t i_avg[i_COUNT] = {0};
@@ -111,13 +112,13 @@ static void display_screen_iu_update() {
     extadc_get_currents_effective(i_eff);
 
     lcd_printf_at(TABLE_3_COL_1, 1, "     ");
-    lcd_printf_at(TABLE_3_COL_1, 1, "%d", u_avg[u_l12]);
+    lcd_printf_at(TABLE_3_COL_1, 1, "%d", u_avg[u_l21]);
 
     lcd_printf_at(TABLE_3_COL_1, 2, "     ");
-    lcd_printf_at(TABLE_3_COL_1, 2, "%d", u_avg[u_l23]);
+    lcd_printf_at(TABLE_3_COL_1, 2, "%d", u_avg[u_l32]);
 
     lcd_printf_at(TABLE_3_COL_1, 3, "     ");
-    lcd_printf_at(TABLE_3_COL_1, 3, "%d", u_avg[u_l31]);
+    lcd_printf_at(TABLE_3_COL_1, 3, "%d", u_avg[u_l13]);
 
     lcd_printf_at(TABLE_3_COL_2, 1, "     ");
     lcd_printf_at(TABLE_3_COL_2, 1, "%d", i_avg[i_l1]);

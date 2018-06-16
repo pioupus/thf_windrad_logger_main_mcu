@@ -19,9 +19,9 @@ typedef enum {
 
     ext_adc_value_vref,
 
-    ext_adc_value_volt_l12,
-    ext_adc_value_volt_l23,
-    ext_adc_value_volt_l31,
+    ext_adc_value_volt_l21,
+    ext_adc_value_volt_l32,
+    ext_adc_value_volt_l13,
 
     ext_adc_value_aux_volt,
 
@@ -57,17 +57,17 @@ typedef struct {
     int16_t current_l2_max;
     int16_t current_l3_max;
 
-    int16_t voltage_l12_avg;
-    int16_t voltage_l23_avg;
-    int16_t voltage_l31_avg;
+    int16_t voltage_l21_avg;
+    int16_t voltage_l32_avg;
+    int16_t voltage_l13_avg;
 
-    uint16_t voltage_l12_eff;
-    uint16_t voltage_l23_eff;
-    uint16_t voltage_l31_eff;
+    uint16_t voltage_l21_eff;
+    uint16_t voltage_l32_eff;
+    uint16_t voltage_l13_eff;
 
-    uint16_t voltage_l12_max;
-    uint16_t voltage_l23_max;
-    uint16_t voltage_l31_max;
+    uint16_t voltage_l21_max;
+    uint16_t voltage_l32_max;
+    uint16_t voltage_l13_max;
 
     uint16_t temperature_l1;
     uint16_t temperature_l2;
@@ -124,6 +124,8 @@ void display_write_text(uint8_t row, uint8_t text_in[20]);
 void display_clear_and_set_custom_screen(void);
 
 void display_set_sysstat_screen(uint8_t count_of_screens, uint8_t screen_index, uint8_t row, uint8_t text_in[20]);
+
+void gpio_set_state(uint8_t gpio_index, uint8_t state);
 
 #endif
 

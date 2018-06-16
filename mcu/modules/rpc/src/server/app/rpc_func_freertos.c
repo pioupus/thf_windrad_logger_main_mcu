@@ -65,20 +65,20 @@ power_sensor_data_t get_power_sensor_data(void) {
     uint16_t u3[3] = {0};
 
     extadc_get_voltages_avg(i4);
-    result.voltage_l12_avg = i4[u_l12];
-    result.voltage_l23_avg = i4[u_l23];
-    result.voltage_l31_avg = i4[u_l31];
+    result.voltage_l21_avg = i4[u_l21];
+    result.voltage_l32_avg = i4[u_l32];
+    result.voltage_l13_avg = i4[u_l13];
     result.voltage_aux = i4[u_aux];
 
     extadc_get_voltages_effective(u3);
-    result.voltage_l12_eff = u3[0];
-    result.voltage_l23_eff = u3[1];
-    result.voltage_l31_eff = u3[2];
+    result.voltage_l21_eff = u3[0];
+    result.voltage_l32_eff = u3[1];
+    result.voltage_l13_eff = u3[2];
 
     extadc_get_voltages_max(u4);
-    result.voltage_l12_max = u4[0];
-    result.voltage_l23_max = u4[1];
-    result.voltage_l31_max = u4[2];
+    result.voltage_l21_max = u4[0];
+    result.voltage_l32_max = u4[1];
+    result.voltage_l13_max = u4[2];
 
     extadc_get_currents_avg(i4);
     result.current_l1_avg = i4[0];
@@ -161,4 +161,53 @@ void display_clear_and_set_custom_screen(void) {
 
 void display_set_sysstat_screen(uint8_t count_of_screens, uint8_t screen_index, uint8_t row, uint8_t text_in[20]) {
     display_set_sysstat_screen_(count_of_screens, screen_index, row, text_in);
+}
+
+void gpio_set_state(uint8_t gpio_index, uint8_t state) {
+    switch (gpio_index) {
+        case 0:
+            if (state) {
+                SET_GPIO0();
+            } else {
+                CLEAR_GPIO0();
+            }
+            break;
+
+        case 1:
+            if (state) {
+                SET_GPIO1();
+            } else {
+                CLEAR_GPIO1();
+            }
+            break;
+
+        case 2:
+            if (state) {
+                SET_GPIO2();
+            } else {
+                CLEAR_GPIO2();
+            }
+            break;
+        case 3:
+            if (state) {
+                SET_GPIO3();
+            } else {
+                CLEAR_GPIO3();
+            }
+            break;
+        case 4:
+            if (state) {
+                SET_GPIO4();
+            } else {
+                CLEAR_GPIO4();
+            }
+            break;
+        case 5:
+            if (state) {
+                SET_WS2812();
+            } else {
+                CLEAR_WS2812();
+            }
+            break;
+    }
 }

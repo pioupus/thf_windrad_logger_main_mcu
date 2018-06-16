@@ -68,8 +68,8 @@ static bool overwrite_channels_complete_allowed = true;
 const ext_adc_raw_channel_t ORDER_OF_ACQUISITION[] = {
 #if 1
     ext_adc_channel_raw_curr_l1_neg, ext_adc_channel_raw_curr_l1_pos, ext_adc_channel_raw_curr_l2_pos, ext_adc_channel_raw_curr_l2_neg,
-    ext_adc_channel_raw_curr_l3_pos, ext_adc_channel_raw_curr_l3_neg, ext_adc_channel_raw_vref,        ext_adc_channel_raw_volt_l12,
-    ext_adc_channel_raw_volt_l23,    ext_adc_channel_raw_volt_l31,    ext_adc_channel_raw_temp_l1,     ext_adc_channel_raw_temp_l2,
+    ext_adc_channel_raw_curr_l3_pos, ext_adc_channel_raw_curr_l3_neg, ext_adc_channel_raw_vref,        ext_adc_channel_raw_volt_l21,
+    ext_adc_channel_raw_volt_l23,    ext_adc_channel_raw_volt_l13,    ext_adc_channel_raw_temp_l1,     ext_adc_channel_raw_temp_l2,
     ext_adc_channel_raw_temp_l3,     ext_adc_channel_raw_aux_volt
 #endif
 };
@@ -435,17 +435,17 @@ void taskExternalADC(void *pvParameters) {
                     }
 
                     {
-                        adc_channels[ext_adc_value_volt_l12][write_index].value =
-                            data_record[ext_adc_channel_raw_volt_l12].value - data_record[ext_adc_channel_raw_vref].value;
-                        adc_channels[ext_adc_value_volt_l12][write_index].time_stamp = data_record[ext_adc_channel_raw_volt_l12].time_stamp;
+                        adc_channels[ext_adc_value_volt_l21][write_index].value =
+                            data_record[ext_adc_channel_raw_volt_l21].value - data_record[ext_adc_channel_raw_vref].value;
+                        adc_channels[ext_adc_value_volt_l21][write_index].time_stamp = data_record[ext_adc_channel_raw_volt_l21].time_stamp;
 
-                        adc_channels[ext_adc_value_volt_l23][write_index].value =
+                        adc_channels[ext_adc_value_volt_l32][write_index].value =
                             data_record[ext_adc_channel_raw_volt_l23].value - data_record[ext_adc_channel_raw_vref].value;
-                        adc_channels[ext_adc_value_volt_l23][write_index].time_stamp = data_record[ext_adc_channel_raw_volt_l23].time_stamp;
+                        adc_channels[ext_adc_value_volt_l32][write_index].time_stamp = data_record[ext_adc_channel_raw_volt_l23].time_stamp;
 
-                        adc_channels[ext_adc_value_volt_l31][write_index].value =
-                            data_record[ext_adc_channel_raw_volt_l31].value - data_record[ext_adc_channel_raw_vref].value;
-                        adc_channels[ext_adc_value_volt_l31][write_index].time_stamp = data_record[ext_adc_channel_raw_volt_l31].time_stamp;
+                        adc_channels[ext_adc_value_volt_l13][write_index].value =
+                            data_record[ext_adc_channel_raw_volt_l13].value - data_record[ext_adc_channel_raw_vref].value;
+                        adc_channels[ext_adc_value_volt_l13][write_index].time_stamp = data_record[ext_adc_channel_raw_volt_l13].time_stamp;
                     }
 
                     {
@@ -465,8 +465,8 @@ void taskExternalADC(void *pvParameters) {
                     for (int i = 0; i < ext_adc_value_COUNT; i++) {
                         adc_channels[i][write_index].value = apply_calibration(adc_channels[i][write_index].value, calibration_data, i);
                     }
-                    int64_t p3 = adc_channels[ext_adc_value_volt_l23][write_index].value * adc_channels[ext_adc_value_curr_l3][write_index].value;
-                    int64_t p2 = adc_channels[ext_adc_value_volt_l12][write_index].value * adc_channels[ext_adc_value_curr_l1][write_index].value;
+                    int64_t p3 = adc_channels[ext_adc_value_volt_l32][write_index].value * adc_channels[ext_adc_value_curr_l3][write_index].value;
+                    int64_t p2 = adc_channels[ext_adc_value_volt_l21][write_index].value * adc_channels[ext_adc_value_curr_l1][write_index].value;
                     power_avging += p3 + p2;
 
                     temperatures_avging[0] += adc_channels[ext_adc_value_temp_l1][write_index].value;
@@ -489,23 +489,23 @@ void taskExternalADC(void *pvParameters) {
                         currents_max_abs[i_l3] = abs_i16(adc_channels[ext_adc_value_curr_l3][write_index].value);
                     }
 
-                    if (voltages_max_abs[u_l12] < abs_i16(adc_channels[ext_adc_value_volt_l12][write_index].value)) {
-                        voltages_max_abs[u_l12] = abs_i16(adc_channels[ext_adc_value_volt_l12][write_index].value);
+                    if (voltages_max_abs[u_l21] < abs_i16(adc_channels[ext_adc_value_volt_l21][write_index].value)) {
+                        voltages_max_abs[u_l21] = abs_i16(adc_channels[ext_adc_value_volt_l21][write_index].value);
                     }
 
-                    if (voltages_max_abs[u_l23] < abs_i16(adc_channels[ext_adc_value_volt_l23][write_index].value)) {
-                        voltages_max_abs[u_l23] = abs_i16(adc_channels[ext_adc_value_volt_l23][write_index].value);
+                    if (voltages_max_abs[u_l32] < abs_i16(adc_channels[ext_adc_value_volt_l32][write_index].value)) {
+                        voltages_max_abs[u_l32] = abs_i16(adc_channels[ext_adc_value_volt_l32][write_index].value);
                     }
-                    if (voltages_max_abs[u_l31] < abs_i16(adc_channels[ext_adc_value_volt_l31][write_index].value)) {
-                        voltages_max_abs[u_l31] = abs_i16(adc_channels[ext_adc_value_volt_l31][write_index].value);
+                    if (voltages_max_abs[u_l13] < abs_i16(adc_channels[ext_adc_value_volt_l13][write_index].value)) {
+                        voltages_max_abs[u_l13] = abs_i16(adc_channels[ext_adc_value_volt_l13][write_index].value);
                     }
                     if (voltages_max_abs[u_aux] < abs_i16(adc_channels[ext_adc_value_aux_volt][write_index].value)) {
                         voltages_max_abs[u_aux] = abs_i16(adc_channels[ext_adc_value_aux_volt][write_index].value);
                     }
 
-                    voltages_avging[u_l12] += adc_channels[ext_adc_value_volt_l12][write_index].value;
-                    voltages_avging[u_l23] += adc_channels[ext_adc_value_volt_l23][write_index].value;
-                    voltages_avging[u_l31] += adc_channels[ext_adc_value_volt_l31][write_index].value;
+                    voltages_avging[u_l21] += adc_channels[ext_adc_value_volt_l21][write_index].value;
+                    voltages_avging[u_l32] += adc_channels[ext_adc_value_volt_l32][write_index].value;
+                    voltages_avging[u_l13] += adc_channels[ext_adc_value_volt_l13][write_index].value;
                     voltages_avging[u_aux] += adc_channels[ext_adc_value_aux_volt][write_index].value;
 
                     currents_effectiving[i_l1] +=
@@ -515,12 +515,12 @@ void taskExternalADC(void *pvParameters) {
                     currents_effectiving[i_l3] +=
                         adc_channels[ext_adc_value_curr_l3][write_index].value * adc_channels[ext_adc_value_curr_l3][write_index].value;
 
-                    voltages_effectiving[u_l12] +=
-                        adc_channels[ext_adc_value_volt_l12][write_index].value * adc_channels[ext_adc_value_volt_l12][write_index].value;
-                    voltages_effectiving[u_l23] +=
-                        adc_channels[ext_adc_value_volt_l23][write_index].value * adc_channels[ext_adc_value_volt_l23][write_index].value;
-                    voltages_effectiving[u_l31] +=
-                        adc_channels[ext_adc_value_volt_l31][write_index].value * adc_channels[ext_adc_value_volt_l31][write_index].value;
+                    voltages_effectiving[u_l21] +=
+                        adc_channels[ext_adc_value_volt_l21][write_index].value * adc_channels[ext_adc_value_volt_l21][write_index].value;
+                    voltages_effectiving[u_l32] +=
+                        adc_channels[ext_adc_value_volt_l32][write_index].value * adc_channels[ext_adc_value_volt_l32][write_index].value;
+                    voltages_effectiving[u_l13] +=
+                        adc_channels[ext_adc_value_volt_l13][write_index].value * adc_channels[ext_adc_value_volt_l13][write_index].value;
 
                     effectiving_test_possible_overflow += 4096 * 4096;
 

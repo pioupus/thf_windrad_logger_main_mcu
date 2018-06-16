@@ -505,9 +505,9 @@ typedef enum {
     ext_adc_channel_raw_curr_l3_neg = 5,
 
     ext_adc_channel_raw_vref = 6,
-    ext_adc_channel_raw_volt_l12 = 7,
+    ext_adc_channel_raw_volt_l21 = 7,
     ext_adc_channel_raw_volt_l23 = 8,
-    ext_adc_channel_raw_volt_l31 = 9,
+    ext_adc_channel_raw_volt_l13 = 9,
     ext_adc_channel_raw_aux_volt = 10,
 
     ext_adc_channel_raw_temp_l1 = 12,
