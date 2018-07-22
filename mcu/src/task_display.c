@@ -29,11 +29,12 @@ static const uint16_t SWITCH_SCREEN_INTERVAL = 10;
 
 static uint8_t custom_screen_buffer[_LCD_ROWS][_LCD_COLS];
 
+typedef enum { update_reason_just_set, update_reason_regular } screen_update_reason_t;
 typedef struct {
     screen_id_t id;
     int update_interval_ms;
     void (*paint_function)(void);
-    void (*update_function)(void);
+    void (*update_function)(screen_update_reason_t);
 } screen_description_t;
 
 void display_custom_screen_write_text(uint8_t row, uint8_t *text) {
@@ -56,7 +57,8 @@ void display_set_sysstat_screen_(uint8_t count_of_screens, uint8_t screen_index,
 static void display_screen_custom_background() {
 }
 
-static void display_screen_custom_update() {
+static void display_screen_custom_update(screen_update_reason_t update_reason) {
+    (void)update_reason;
     lcd_putc('\f');
     for (int i = 0; i < 4; i++) {
         lcd_printf_at(0, i, "%s", custom_screen_buffer[i][0]);
@@ -66,17 +68,19 @@ static void display_screen_custom_update() {
 static void display_screen_sys_stat_background() {
 }
 
-static void display_screen_sys_stat_update() {
+static void display_screen_sys_stat_update(screen_update_reason_t update_reason) {
     static uint8_t current_sysstat_screens_index = 0;
-    current_sysstat_screens_index++;
-    if (current_sysstat_screens_index > used_sysstat_screens) {
+    if (update_reason == update_reason_regular) {
+        current_sysstat_screens_index++;
+    }
+    if (current_sysstat_screens_index >= used_sysstat_screens) {
         display_set_screen(screen_iu);
         current_sysstat_screens_index = 0;
         return;
     }
     lcd_putc('\f');
     for (int i = 0; i < 4; i++) {
-        lcd_printf_at(0, i, "%s", sysstat_screen[current_sysstat_screens_index - 1][i]);
+        lcd_printf_at(0, i, "%s", sysstat_screen[current_sysstat_screens_index][i]);
     }
 }
 
@@ -90,9 +94,11 @@ static void display_screen_iu_background() {
     lcd_printf_at(0, 3, "L3");
 }
 
-static void display_screen_iu_update() {
+static void display_screen_iu_update(screen_update_reason_t update_reason) {
     static int update_count = 0;
-    update_count++;
+    if (update_reason == update_reason_regular) {
+        update_count++;
+    }
 #if 1
     if (update_count > SWITCH_SCREEN_INTERVAL) {
         display_set_screen(screen_pbt);
@@ -149,9 +155,11 @@ static void display_screen_pbt_background() {
     lcd_printf_at(10, 3, "DCI");
 }
 
-static void display_screen_pbt_update() {
+static void display_screen_pbt_update(screen_update_reason_t update_reason) {
     static int update_count = 0;
-    update_count++;
+    if (update_reason == update_reason_regular) {
+        update_count++;
+    }
     if (update_count > SWITCH_SCREEN_INTERVAL) {
         display_set_screen(screen_sysstat);
         update_count = 0;
@@ -198,7 +206,7 @@ static void display_screen_boot_background() {
     lcd_printf_at(0, 3, "kruegerarneak@gmail");
 }
 
-static void display_screen_boot_update() {
+static void display_screen_boot_update(screen_update_reason_t update_reason) {
 }
 
 const screen_description_t screen_instruction_table[] = {
@@ -217,7 +225,7 @@ const screen_description_t screen_instruction_table[] = {
      .update_function = &display_screen_pbt_update}, //
 
     {.id = screen_sysstat, //
-     .update_interval_ms = 2000,
+     .update_interval_ms = 5000,
      .paint_function = &display_screen_sys_stat_background,
      .update_function = &display_screen_sys_stat_update}, //
 
@@ -232,7 +240,7 @@ void display_set_screen(screen_id_t new_screen_id) {
     if (current_screen_id != new_screen_id) {
         current_screen_id = new_screen_id;
         screen_instruction_table[current_screen_id].paint_function();
-        screen_instruction_table[current_screen_id].update_function();
+        screen_instruction_table[current_screen_id].update_function(update_reason_just_set);
     }
 }
 
@@ -256,7 +264,8 @@ void taskDisplay(void *pvParameters) {
 
     display_set_screen(screen_iu);
     while (1) {
-        screen_instruction_table[current_screen_id].update_function();
+
+        screen_instruction_table[current_screen_id].update_function(update_reason_regular);
         vTaskDelay((screen_instruction_table[current_screen_id].update_interval_ms / portTICK_RATE_MS));
     }
 #endif

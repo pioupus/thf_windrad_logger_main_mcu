@@ -248,7 +248,7 @@ int main(void) {
 
     // SET_SHUTDOWN(); // lets wait until supevisor task allows raspi to work
     xSerialPortInitMinimal(serCOM_DBG, 115200, 100);
-    xSerialPortInitMinimal(serCOM_RPC, 115200, 400);
+    xSerialPortInitMinimal(serCOM_RPC, 115200, 500);
 
     SET_LED_COM_BOT_GREEN();
     SET_LED_COM_BOT_YELLOW();

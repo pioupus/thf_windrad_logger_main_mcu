@@ -45,6 +45,8 @@ typedef struct {
 } device_descriptor_t;
 
 typedef struct {
+    uint32_t unix_time;
+    uint16_t sub_seconds;
     int16_t current_l1_avg;
     int16_t current_l2_avg;
     int16_t current_l3_avg;
@@ -102,13 +104,19 @@ typedef struct {
     calibration_coefficients_t cpu_channels[4]; // must be the same as ADC_MCU_VALUE_COUNT, but RPC will not generate code
 } calibration_t;
 
+typedef struct {
+    int16_t sample[128]; // must be the same as ADC_EXTERNAL_VALUE_COUNT, but RPC will not generate code
+    uint32_t unix_time;  // must be the same as ADC_EXTERNAL_VALUE_COUNT, but RPC will not generate code
+    uint8_t sub_seconds; // must be the same as ADC_MCU_VALUE_COUNT, but RPC will not generate code
+} sampe_data_t;
+
 void set_calibration_data(calibration_t calibration_data_in[1]);
 
 calibration_t get_calibration_data(void);
 
 void acquire_sample_data(void);
 uint8_t is_sample_data_complete(void);
-void get_sample_data(int16_t samples_out[128], ext_adc_value_channel_t channel);
+sampe_data_t get_sample_data(ext_adc_value_channel_t channel);
 
 power_sensor_data_t get_power_sensor_data(void);
 

@@ -88,6 +88,18 @@ void example_print_date_time(){
 }
 #endif
 
+uint32_t rtc_get_sub_seconds() {
+    RTC_TimeTypeDef rtcTime = {0};
+    HAL_RTC_GetTime(&hrtc, &rtcTime, RTC_FORMAT_BIN);
+    return rtcTime.SubSeconds;
+}
+
+uint32_t rtc_get_sub_second_fraction() {
+    RTC_TimeTypeDef rtcTime = {0};
+    HAL_RTC_GetTime(&hrtc, &rtcTime, RTC_FORMAT_BIN);
+    return rtcTime.SecondFraction;
+}
+
 static time_t rtc_get_date_time() {
     RTC_DateTypeDef rtcDate = {0};
     RTC_TimeTypeDef rtcTime = {0};

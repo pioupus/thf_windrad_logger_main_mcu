@@ -17,6 +17,9 @@
 #include <assert.h>
 #include <string.h>
 
+static uint32_t old_unix_time = 0;
+static uint16_t sequence_number = 0;
+
 device_descriptor_t get_device_descriptor(void) {
     device_descriptor_t retval = {.name = "THF_LOGGER", .version = "0.1"};
     retval.githash = GITHASH;
@@ -33,8 +36,12 @@ uint8_t is_sample_data_complete(void) {
     return extadc_is_sample_data_complete();
 }
 
-void get_sample_data(int16_t samples_out[128], ext_adc_value_channel_t channel) {
-    extadc_get_sample_data(samples_out, channel);
+sampe_data_t get_sample_data(ext_adc_value_channel_t channel) {
+    sampe_data_t result = {0};
+    result.unix_time = time(NULL);
+    result.sub_seconds = rtc_get_sub_seconds();
+    extadc_get_sample_data(result.sample, channel);
+    return result;
 #if 0
     static int16_t val = 0;
     for (int i = 0; i < 128; i++) {
@@ -59,6 +66,10 @@ calibration_t get_calibration_data(void) {
 power_sensor_data_t get_power_sensor_data(void) {
 
     power_sensor_data_t result = {0};
+
+    result.unix_time = time(NULL);
+    ;
+    result.sub_seconds = rtc_get_sub_seconds();
 
     int16_t i4[u_COUNT] = {0};
     uint16_t u4[4] = {0};
