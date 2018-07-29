@@ -88,19 +88,7 @@ void example_print_date_time(){
 }
 #endif
 
-uint32_t rtc_get_sub_seconds() {
-    RTC_TimeTypeDef rtcTime = {0};
-    HAL_RTC_GetTime(&hrtc, &rtcTime, RTC_FORMAT_BIN);
-    return rtcTime.SubSeconds;
-}
-
-uint32_t rtc_get_sub_second_fraction() {
-    RTC_TimeTypeDef rtcTime = {0};
-    HAL_RTC_GetTime(&hrtc, &rtcTime, RTC_FORMAT_BIN);
-    return rtcTime.SecondFraction;
-}
-
-static time_t rtc_get_date_time() {
+static time_t rtc_get_date_time(uint32_t *fraction, uint32_t *subseconds) {
     RTC_DateTypeDef rtcDate = {0};
     RTC_TimeTypeDef rtcTime = {0};
 
@@ -114,6 +102,8 @@ static time_t rtc_get_date_time() {
     uint8_t m = rtcDate.Month;
     uint16_t y = rtcDate.Year;
     uint16_t yr = (uint16_t)(y + 2000 - 1900);
+    *subseconds = rtcTime.SecondFraction - rtcTime.SubSeconds;
+    *fraction = rtcTime.SecondFraction;
 
     struct tm tim = {0};
     tim.tm_year = yr;
@@ -126,10 +116,22 @@ static time_t rtc_get_date_time() {
     return mktime(&tim);
 }
 
+sub_unix_time_t rtc_get_sub_unix_time() {
+    uint32_t fraction = 0;
+    uint32_t subseconds = 0;
+    sub_unix_time_t result = {0};
+    result.unix_time = rtc_get_date_time(&fraction, &subseconds); // convert to seconds
+    result.subseconds = subseconds;
+    result.fraction = fraction;
+    return result;
+}
+
 int _gettimeofday(struct timeval *tv, void *tzvp) {
-    tv->tv_sec = rtc_get_date_time(); // convert to seconds
-    tv->tv_usec = 0;                  // get remaining microseconds
-    return 0;                         // return non-zero for error
+    uint32_t fraction = 0;
+    uint32_t subseconds = 0;
+    tv->tv_sec = rtc_get_date_time(&fraction, &subseconds); // convert to seconds
+    tv->tv_usec = 0;                                        // get remaining microseconds
+    return 0;                                               // return non-zero for error
 }
 
 void rtc_goto_standby_with_wakup_after_period(int period_s) {
