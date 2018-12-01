@@ -209,7 +209,7 @@ void xSerialPutCharPolling(eCOMPort pxPort, signed char cOutChar) {
 }
 
 signed portBASE_TYPE xSerialPutChar(eCOMPort pxPort, signed char cOutChar, TickType_t xBlockTime) {
-    signed portBASE_TYPE xReturn;
+    signed portBASE_TYPE xReturn = pdFAIL;
 
     if (RTOSRunningFlag) {
         if (pxPort == serCOM_DBG) {

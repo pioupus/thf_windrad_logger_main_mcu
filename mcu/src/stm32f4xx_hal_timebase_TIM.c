@@ -1,35 +1,35 @@
 /**
-  ******************************************************************************
-  * @file    stm32l1xx_hal_timebase_TIM.c
-  * @brief   HAL time base based on the hardware TIM.
-  ******************************************************************************
-  *
-  * COPYRIGHT(c) 2016 STMicroelectronics
-  *
-  * Redistribution and use in source and binary forms, with or without modification,
-  * are permitted provided that the following conditions are met:
-  *   1. Redistributions of source code must retain the above copyright notice,
-  *      this list of conditions and the following disclaimer.
-  *   2. Redistributions in binary form must reproduce the above copyright notice,
-  *      this list of conditions and the following disclaimer in the documentation
-  *      and/or other materials provided with the distribution.
-  *   3. Neither the name of STMicroelectronics nor the names of its contributors
-  *      may be used to endorse or promote products derived from this software
-  *      without specific prior written permission.
-  *
-  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-  * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-  * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-  * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-  * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-  * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-  *
-  ******************************************************************************
-  */
+ ******************************************************************************
+ * @file    stm32l1xx_hal_timebase_TIM.c
+ * @brief   HAL time base based on the hardware TIM.
+ ******************************************************************************
+ *
+ * COPYRIGHT(c) 2016 STMicroelectronics
+ *
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted provided that the following conditions are met:
+ *   1. Redistributions of source code must retain the above copyright notice,
+ *      this list of conditions and the following disclaimer.
+ *   2. Redistributions in binary form must reproduce the above copyright notice,
+ *      this list of conditions and the following disclaimer in the documentation
+ *      and/or other materials provided with the distribution.
+ *   3. Neither the name of STMicroelectronics nor the names of its contributors
+ *      may be used to endorse or promote products derived from this software
+ *      without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+ * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ ******************************************************************************
+ */
 
 /* Includes ------------------------------------------------------------------*/
 #include "periodic_timer.h"
@@ -38,14 +38,14 @@
 #include "board.h"
 
 static const uint16_t TIMEBASE_MILLISECOND_FRACTION = 1000 / TIMEBASE_SUBTICK_DURATION_us;
-static uint32_t subtick_counter = 0;
+static volatile uint32_t subtick_counter = 0;
 /** @addtogroup STM32F7xx_HAL_Examples
-  * @{
-  */
+ * @{
+ */
 
 /** @addtogroup HAL_TimeBase
-  * @{
-  */
+ * @{
+ */
 
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
@@ -57,14 +57,14 @@ uint32_t uwIncrementState = 0;
 /* Private functions ---------------------------------------------------------*/
 
 /**
-  * @brief  This function configures the TIM2 as a time base source.
-  *         The time source is configured  to have 1ms time base with a dedicated
-  *         Tick interrupt priority.
-  * @note   This function is called  automatically at the beginning of program after
-  *         reset by HAL_Init() or at any time when clock is configured, by HAL_RCC_ClockConfig().
-  * @param  TickPriority: Tick interrupt priorty.
-  * @retval HAL status
-  */
+ * @brief  This function configures the TIM2 as a time base source.
+ *         The time source is configured  to have 1ms time base with a dedicated
+ *         Tick interrupt priority.
+ * @note   This function is called  automatically at the beginning of program after
+ *         reset by HAL_Init() or at any time when clock is configured, by HAL_RCC_ClockConfig().
+ * @param  TickPriority: Tick interrupt priorty.
+ * @retval HAL status
+ */
 HAL_StatusTypeDef HAL_InitTick(uint32_t TickPriority) {
     RCC_ClkInitTypeDef clkconfig;
     uint32_t uwTimclock = 0;
@@ -114,35 +114,35 @@ HAL_StatusTypeDef HAL_InitTick(uint32_t TickPriority) {
 }
 
 /**
-  * @brief  Suspend Tick increment.
-  * @note   Disable the tick increment by disabling TIM2 update interrupt.
-  * @param  None
-  * @retval None
-  */
+ * @brief  Suspend Tick increment.
+ * @note   Disable the tick increment by disabling TIM2 update interrupt.
+ * @param  None
+ * @retval None
+ */
 void HAL_SuspendTick(void) {
     /* Disable TIM2 update Interrupt */
     __HAL_TIM_DISABLE_IT(&htim2, TIM_IT_UPDATE);
 }
 
 /**
-  * @brief  Resume Tick increment.
-  * @note   Enable the tick increment by Enabling TIM2 update interrupt.
-  * @param  None
-  * @retval None
-  */
+ * @brief  Resume Tick increment.
+ * @note   Enable the tick increment by Enabling TIM2 update interrupt.
+ * @param  None
+ * @retval None
+ */
 void HAL_ResumeTick(void) {
     /* Enable TIM2 Update interrupt */
     __HAL_TIM_ENABLE_IT(&htim2, TIM_IT_UPDATE);
 }
 
 /**
-  * @brief  Period elapsed callback in non blocking mode
-  * @note   This function is called  when TIM2 interrupt took place, inside
-  * HAL_TIM_IRQHandler(). It makes a direct call to HAL_IncTick() to increment
-  * a global variable "uwTick" used as application time base.
-  * @param  htim : TIM handle
-  * @retval None
-  */
+ * @brief  Period elapsed callback in non blocking mode
+ * @note   This function is called  when TIM2 interrupt took place, inside
+ * HAL_TIM_IRQHandler(). It makes a direct call to HAL_IncTick() to increment
+ * a global variable "uwTick" used as application time base.
+ * @param  htim : TIM handle
+ * @retval None
+ */
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
     static uint16_t subticks = 0;
     subticks++;
@@ -178,14 +178,15 @@ uint32_t timebase_get_subticks() {
 void timebase_delay_by_subticks(uint32_t delay_by_subtick) {
     uint32_t wait_until_subtick = subtick_counter + delay_by_subtick;
     while (subtick_counter < wait_until_subtick) {
+        // asm("nop");
     }
 }
 /**
-  * @}
-  */
+ * @}
+ */
 
 /**
-  * @}
-  */
+ * @}
+ */
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

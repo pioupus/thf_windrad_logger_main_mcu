@@ -86,4 +86,5 @@ extern channel_codec_instance_t cc_instances[channel_codec_comport_COUNT];
 
 void main_set_date_time(uint16_t year, uint8_t month, uint8_t day, uint8_t hour, uint8_t min, uint8_t sec);
 
+extern bool DMA1_Stream2_IRQHandler_triggered;
 #endif /* MAIN_H_ */

@@ -33,6 +33,14 @@ uint8_t is_sample_data_complete(void) {
     return extadc_is_sample_data_complete();
 }
 
+void reset_sample_data_readpointer() {
+    extadc_reset_sample_data_readpointer();
+}
+
+uint16_t get_sample_chunk_count() {
+    return extadc_sample_chunk_count();
+}
+
 sampe_data_t get_sample_data(ext_adc_value_channel_t channel) {
     sampe_data_t result = {0};
     sub_unix_time_t sub_unix_time = rtc_get_sub_unix_time();
@@ -40,13 +48,6 @@ sampe_data_t get_sample_data(ext_adc_value_channel_t channel) {
     result.sub_seconds = sub_unix_time.subseconds;
     extadc_get_sample_data(result.sample, channel);
     return result;
-#if 0
-    static int16_t val = 0;
-    for (int i = 0; i < 128; i++) {
-        samples_out[i] = val;
-    }
-    val++;
-#endif
 }
 
 void set_calibration_data(calibration_t calibration_data_in[1]) {
@@ -110,7 +111,7 @@ power_sensor_data_t get_power_sensor_data(void) {
     result.temperature_l3 = u3[2];
 
     result.power = extadc_get_power();
-    result.frequency_Hz = 0;
+    result.frequency_Hz = extadc_get_frequency();
 
     uint16_t values[adsi_max] = {0};
     adc_get_values(values);

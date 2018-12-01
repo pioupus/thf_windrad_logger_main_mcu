@@ -2,7 +2,7 @@
 #     0 = turn off optimization. s = optimize for size.
 # 
 
-OPT = 0
+OPT = 3
 
 
 MCU = STM32F407xx

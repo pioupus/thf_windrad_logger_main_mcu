@@ -35,22 +35,24 @@ const uint16_t ADS_CTR_REG_RESET = 0x0200;
 const uint16_t ADS_CTR_REG_GPIO_OUTPUT = 0x000F;
 
 #define CHANNEL_COUNT 14
-#define ADC_WORD_SIZE 2
+#define ADC_WORD_SIZE 1
 
-#define RX_BUFFER_SIZE ADC_RECORDS_TO_BUFFER *CHANNEL_COUNT *ADC_WORD_SIZE
-#define TX_BUFFER_SIZE ADC_RECORDS_TO_BUFFER *CHANNEL_COUNT *ADC_WORD_SIZE
+#define RX_BUFFER_SIZE ADC_RECORDS_TO_BUFFER *CHANNEL_COUNT *ADC_WORD_SIZE / 8
+#define TX_BUFFER_SIZE ADC_RECORDS_TO_BUFFER *CHANNEL_COUNT *ADC_WORD_SIZE / 8
 
 uint32_t adc_input_buffer[RX_BUFFER_SIZE];
 uint32_t adc_output_buffer[TX_BUFFER_SIZE];
 
 typedef struct {
-    uint32_t time_stamp;
     int16_t value;
 } adc_data_record_t;
 
 adc_data_record_t adc_channels[ext_adc_value_COUNT][ADC_RECORDS_TO_BUFFER];
+uint16_t timestamps[ADC_RECORDS_TO_BUFFER];
 
-adc_data_record_t adc_channels_complete[ext_adc_value_COUNT][ADC_RECORDS_TO_BUFFER];
+#define COMPLETE_RECORDS_CHUNK_COUNT 4 * 32
+#define COMPLETE_RECORDS_LENGTH ADC_RECORDS_TO_BUFFER *COMPLETE_RECORDS_CHUNK_COUNT
+adc_data_record_t adc_channels_complete[ext_adc_value_COUNT][COMPLETE_RECORDS_LENGTH];
 
 static int16_t power_currents_average[i_COUNT];
 static uint16_t power_currents_effective[i_COUNT];
@@ -59,11 +61,15 @@ static int16_t power_currents_max[i_COUNT];
 static int16_t power_voltages_average[u_COUNT];
 static uint16_t power_voltages_effective[u_COUNT];
 static uint16_t power_voltages_max[u_COUNT];
-static int32_t power_power;
+static int32_t power_power = 0;
+static int32_t period_length = 0;
 
 static uint16_t temparatures_average[3];
 
-static bool overwrite_channels_complete_allowed = true;
+static uint32_t complete_records_chunk_write_index = 0;
+static uint32_t complete_records_chunk_read_index = 0;
+static volatile bool half_full_handle_activated = false;
+static uint16_t read_buffer_start_index = 0;
 
 const ext_adc_raw_channel_t ORDER_OF_ACQUISITION[] = {
 #if 1
@@ -80,20 +86,46 @@ const ext_adc_raw_channel_t ORDER_OF_ACQUISITION[] = {
 
 static SemaphoreHandle_t semaphore_adc_half_buffer_ready;
 
-static void I2S3_ClockConfig(I2S_HandleTypeDef *hi2s, uint32_t AudioFreq) {
-    RCC_PeriphCLKInitTypeDef rccclkinit;
+static void I2S3_ClockConfig_(RCC_PeriphCLKInitTypeDef *rccclkinit) {
 
     /*Enable PLLI2S clock*/
-    HAL_RCCEx_GetPeriphCLKConfig(&rccclkinit);
+    HAL_RCCEx_GetPeriphCLKConfig(rccclkinit);
     /* PLLI2S_VCO Input = HSE_VALUE/PLL_M = 1 Mhz */
 
     /* Audio frequency multiple of 8 (8/16/32/48/96/192)*/
     /* PLLI2S_VCO Output = PLLI2S_VCO Input * PLLI2SN = 192 Mhz */
     /* I2SCLK = PLLI2S_VCO Output/PLLI2SR = 192/6 = 32 Mhz */
-    rccclkinit.PeriphClockSelection = RCC_PERIPHCLK_I2S;
-    rccclkinit.PLLI2S.PLLI2SN = 256;
-    rccclkinit.PLLI2S.PLLI2SR = 1;
+    rccclkinit->PeriphClockSelection = RCC_PERIPHCLK_I2S;
+    rccclkinit->PLLI2S.PLLI2SN = 256;
+    rccclkinit->PLLI2S.PLLI2SR = 1;
+}
+
+static void I2S3_ClockConfig(uint32_t AudioFreq) {
+    RCC_PeriphCLKInitTypeDef rccclkinit = {0};
+    I2S3_ClockConfig_(&rccclkinit);
     HAL_RCCEx_PeriphCLKConfig(&rccclkinit);
+}
+
+static uint64_t get_i2s3_clock(uint32_t AudioFreq) {
+    RCC_PeriphCLKInitTypeDef rccclkinit;
+    I2S3_ClockConfig_(&rccclkinit);
+    // volatile uint32_t uwTimclock = HAL_RCC_GetPCLK1Freq();
+    // HAL_RCC_GetPCLK1Freq: 42Mhz
+
+    // HAL_RCC_GetPCLK2Freq: 84 Mhz
+    uint32_t i2sclk;
+#if defined(I2S_APB1_APB2_FEATURE)
+    if (IS_I2S_APB1_INSTANCE(hi2s->Instance)) {
+        i2sclk = HAL_RCCEx_GetPeriphCLKFreq(RCC_PERIPHCLK_I2S_APB1);
+    } else {
+        i2sclk = HAL_RCCEx_GetPeriphCLKFreq(RCC_PERIPHCLK_I2S_APB2);
+    }
+#else
+    i2sclk = HAL_RCCEx_GetPeriphCLKFreq(RCC_PERIPHCLK_I2S);
+#endif
+
+    return i2sclk;
+    // HAL_RCC_GetPCLK2Freq();
 }
 
 static void I2S3_MspInit(void) {
@@ -158,8 +190,13 @@ static void MX_I2S_Init_DMA(void) {
     hi2s3.Init.Standard = I2S_STANDARD_PCM_SHORT;
     hi2s3.Init.DataFormat = I2S_DATAFORMAT_32B;
     hi2s3.Init.MCLKOutput = I2S_MCLKOUTPUT_DISABLE;
-    hi2s3.Init.AudioFreq = 700000U; // I2S_AUDIOFREQ_192K; // 500000U;
+    hi2s3.Init.AudioFreq = 700000U;
+    // 600000U: 9.85Mhz
+
+    // 7000 00U: 11.64MHz
+    // I2S_AUDIOFREQ_192K; // 500000U;
     hi2s3.Init.CPOL = I2S_CPOL_LOW;
+
     hi2s3.Init.ClockSource = I2S_CLOCK_PLL;
     hi2s3.Init.FullDuplexMode = I2S_FULLDUPLEXMODE_ENABLE;
 
@@ -252,6 +289,34 @@ void extadc_get_temperature_avg(uint16_t avg[3]) {
     portEXIT_CRITICAL();
 }
 
+uint16_t extadc_get_frequency() {
+    uint16_t result = 0;
+    const uint8_t spi_sample_lenght = 32;
+    uint64_t spi_frequency = get_i2s3_clock(192);
+    // hi2s->Instance->I2SPR = (uint32_t)((uint32_t)i2sdiv | (uint32_t)(i2sodd | (uint32_t)hi2s->Init.MCLKOutput));
+    uint32_t I2SDIV = (hi2s3.Instance->I2SPR & SPI_I2SPR_I2SDIV_Msk) >> SPI_I2SPR_I2SDIV_Pos;
+    uint32_t odd = (hi2s3.Instance->I2SPR & SPI_I2SPR_ODD_Msk) >> SPI_I2SPR_ODD_Pos;
+    uint32_t i2s_bit_clock = spi_frequency / (((2 * I2SDIV) + odd) * 2); // when the channel frame is 32-bit wide
+    uint32_t i2s_sample_clock = i2s_bit_clock / (32 * CHANNEL_COUNT);
+
+    uint64_t sample_time_us_over_10 = 100 * 1000 * 1000 / i2s_sample_clock;
+
+    // CHANNEL_COUNT
+    uint32_t period_length_ = 0;
+    portENTER_CRITICAL();
+    period_length_ = period_length;
+    portEXIT_CRITICAL();
+    uint64_t period_length_us_over_10 = 0;
+    if (period_length_) {
+        period_length_us_over_10 = period_length_ * sample_time_us_over_10;
+    } else {
+        period_length_us_over_10 = 0;
+    }
+    uint64_t frequency = 100 * 1000 * 1000 / period_length_us_over_10;
+    result = frequency;
+    return result;
+}
+
 int32_t extadc_get_power() {
     int32_t result = 0;
     portENTER_CRITICAL();
@@ -260,12 +325,32 @@ int32_t extadc_get_power() {
     return result;
 }
 
+uint16_t extadc_sample_chunk_count() {
+    return COMPLETE_RECORDS_CHUNK_COUNT;
+}
+
+void extadc_reset_sample_data_readpointer() {
+    complete_records_chunk_read_index = 0;
+}
+
 void extadc_get_sample_data(int16_t samples[ADC_RECORDS_TO_BUFFER], const ext_adc_value_channel_t channel) {
     portENTER_CRITICAL();
     for (uint i = 0; i < ADC_RECORDS_TO_BUFFER; i++) {
-        samples[i] = adc_channels_complete[channel][i].value;
+        samples[i] = adc_channels_complete[channel][i + complete_records_chunk_read_index * ADC_RECORDS_TO_BUFFER].value;
+    }
+    complete_records_chunk_read_index++;
+    if (complete_records_chunk_read_index >= COMPLETE_RECORDS_CHUNK_COUNT) {
+        complete_records_chunk_read_index = 0;
     }
     portEXIT_CRITICAL();
+}
+
+void extadc_start_acquire_sample_data() {
+    complete_records_chunk_write_index = 0;
+}
+
+bool extadc_is_sample_data_complete() {
+    return complete_records_chunk_write_index >= COMPLETE_RECORDS_CHUNK_COUNT;
 }
 
 uint8_t external_adc_transmission() {
@@ -289,7 +374,7 @@ uint8_t external_adc_transmission() {
             next_channel_index = 0;
         }
     }
-    HAL_I2SEx_TransmitReceive_DMA(&hi2s3, (uint16_t *)adc_output_buffer, (uint16_t *)&adc_input_buffer[0], RX_BUFFER_SIZE / 2);
+    HAL_I2SEx_TransmitReceive_DMA(&hi2s3, (uint16_t *)adc_output_buffer, (uint16_t *)&adc_input_buffer[0], RX_BUFFER_SIZE);
 
     return 0;
 }
@@ -299,14 +384,53 @@ void HAL_I2S_ErrorCallback(I2S_HandleTypeDef *hi2s) {
 }
 
 void HAL_I2S_TxRxCpltCallback(I2S_HandleTypeDef *hi2s) {
+    SET_LED_GREEN();
+    CLEAR_LED_GREEN();
+    __asm__("BKPT");
+}
+
+void HAL_I2SEx_TxRxCpltCallback(I2S_HandleTypeDef *hi2s) {
+    SET_LED_GREEN();
+    CLEAR_LED_GREEN();
+    __asm__("BKPT");
 }
 
 void HAL_I2SEx_TxRxHalfCpltCallback(I2S_HandleTypeDef *hi2s) {
+    if (DMA1_Stream2_IRQHandler_triggered) {
+        half_full_handle_activated = true;
+        // HAL_I2SEx_TxRxHalfCpltCallback_(hi2s);
+    }
+}
+
+void HAL_I2SEx_TxRxHalfCpltCallback_(I2S_HandleTypeDef *hi2s) {
     /* Prevent unused argument(s) compilation warning */
-    static portBASE_TYPE xHigherPriorityTaskWoken;
-    xHigherPriorityTaskWoken = pdFALSE;
-    xSemaphoreGiveFromISR(semaphore_adc_half_buffer_ready, &xHigherPriorityTaskWoken);
-    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+    if (DMA1_Stream2_IRQHandler_triggered) {
+        static portBASE_TYPE xHigherPriorityTaskWoken;
+        volatile uint32_t ndtr = hi2s->hdmarx->Instance->NDTR;
+        // if (ndtr < RX_BUFFER_SIZE / 2) {
+        // read_buffer_start_index = 0;
+        //} else {
+        ////    read_buffer_start_index = RX_BUFFER_SIZE / 2;
+        // }
+        half_full_handle_activated = false;
+        SET_LED_GREEN();
+#if 0
+    {
+        static uint8_t led_green_state = 0;
+        if (led_green_state & 1) {
+            SET_LED_GREEN();
+        } else {
+            CLEAR_LED_GREEN();
+        }
+        led_green_state++;
+    }
+#endif
+
+        xHigherPriorityTaskWoken = pdFALSE;
+        xSemaphoreGiveFromISR(semaphore_adc_half_buffer_ready, &xHigherPriorityTaskWoken);
+        CLEAR_LED_GREEN();
+        portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+    }
 }
 
 int32_t apply_calibration(int32_t in_value, const calibration_t *calibration, const ext_adc_value_channel_t channel) {
@@ -327,14 +451,6 @@ uint16_t abs_i16(int16_t val) {
     }
 }
 
-void extadc_start_acquire_sample_data() {
-    overwrite_channels_complete_allowed = true;
-}
-
-bool extadc_is_sample_data_complete() {
-    return !overwrite_channels_complete_allowed;
-}
-
 void taskExternalADC(void *pvParameters) {
 
     for (uint i = 0; i < LAST_INDEX_IN_ACQUIRE_ORDER + 1; i++) { // check if there are duplicates. If yes, the data processing beneath wont work
@@ -345,25 +461,33 @@ void taskExternalADC(void *pvParameters) {
 
     calibration_t *calibration_data = calib_get();
     ExternalADC_Config();
-    I2S3_ClockConfig(&hi2s3, 192);
+    I2S3_ClockConfig(192);
     external_adc_transmission();
+    // xSemaphoreTake(semaphore_adc_half_buffer_ready, 100 / portTICK_RATE_MS);
 
-    uint16_t read_buffer_start_index = 0;
     uint32_t write_index = 0;
     uint32_t sample_time_stamp = 0;
     int64_t temperatures_avging[3] = {0};
     int64_t power_avging = {0};
     int64_t currents_avging[i_COUNT] = {0};
     int64_t voltages_avging[u_COUNT] = {0};
+    int64_t period_length_avging = 0;
 
     uint64_t currents_effectiving[i_COUNT] = {0};
     uint64_t voltages_effectiving[u_COUNT] = {0};
 
     uint16_t currents_max_abs[i_COUNT] = {0};
     uint32_t voltages_max_abs[u_COUNT] = {0};
+    int32_t value_volt_l21_old_max_abs = 0;
 
     uint64_t effectiving_test_possible_overflow = {0};
 
+    bool period_length_histeresis_rising = true;
+    uint32_t period_avg_cycles_n = 0;
+    uint32_t period_length_last_transition_phase = 0;
+    uint32_t period_length_counter = 0;
+
+    uint32_t printf_pause = 0;
     uint32_t effectiving_n = 0;
     TickType_t effective_calculation_period_start_ms = xTaskGetTickCount();
     const TickType_t EFFECTIVE_CALCULATION_PERIOD_LENGTH_ms = 1000 / portTICK_RATE_MS;
@@ -374,22 +498,31 @@ void taskExternalADC(void *pvParameters) {
         if (xSemaphoreTake(semaphore_adc_half_buffer_ready, 100 / portTICK_RATE_MS) == pdTRUE) {
             SET_LED_YELLOW();
 
-            for (uint16_t i = 0; i < ADC_RECORDS_TO_BUFFER / 2; i++) {
+            for (uint16_t i = 0; i < RX_BUFFER_SIZE / 2; i++) {
 
                 uint32_t adc_word = adc_input_buffer[read_buffer_start_index + i];
                 ext_adc_raw_channel_t channel_index = (adc_word & 0xF000) >> 12;
+#if 0
+                {
+                    if (printf_pause % 100 == 0) {
+                        printf("%d\n", channel_index);
+                    }
+                }
+#endif
                 uint16_t value = adc_word & 0x0FFF;
 
 #if 1
                 assert(channel_index < 16);
                 data_record[channel_index].value = value;
-                data_record[channel_index].time_stamp = sample_time_stamp;
                 (void)data_record;
 #endif
 
-                const ext_adc_raw_channel_t LAST_CHANNEL_IN_ORDER = LAST_CHANNEL_IN_ACQUIRE_ORDER;
-                if (channel_index == LAST_CHANNEL_IN_ACQUIRE_ORDER) { // if we acquired a hole set of data and start with the first channel again
 #if 1
+                const ext_adc_raw_channel_t LAST_CHANNEL_IN_ORDER = LAST_CHANNEL_IN_ACQUIRE_ORDER;
+                if (channel_index == LAST_CHANNEL_IN_ACQUIRE_ORDER) {
+                    // if we acquired a hole set of data and start with the first channel again
+                    timestamps[write_index] = sample_time_stamp;
+#if 0
                     {
                         static uint8_t led_green_state = 0;
                         if (led_green_state & 1) {
@@ -406,10 +539,9 @@ void taskExternalADC(void *pvParameters) {
                         const ext_adc_value_channel_t ci = ext_adc_value_curr_l1;
                         if (data_record[ext_adc_channel_raw_curr_l1_pos].value > data_record[ext_adc_channel_raw_curr_l1_neg].value) {
                             adc_channels[ci][write_index].value = data_record[ext_adc_channel_raw_curr_l1_pos].value;
-                            adc_channels[ci][write_index].time_stamp = data_record[ext_adc_channel_raw_curr_l1_pos].time_stamp;
+
                         } else {
                             adc_channels[ci][write_index].value = -data_record[ext_adc_channel_raw_curr_l1_neg].value;
-                            adc_channels[ci][write_index].time_stamp = data_record[ext_adc_channel_raw_curr_l1_neg].time_stamp;
                         }
                     }
 
@@ -417,54 +549,59 @@ void taskExternalADC(void *pvParameters) {
                         const ext_adc_value_channel_t ci = ext_adc_value_curr_l2;
                         if (data_record[ext_adc_channel_raw_curr_l2_pos].value > data_record[ext_adc_channel_raw_curr_l2_neg].value) {
                             adc_channels[ci][write_index].value = data_record[ext_adc_channel_raw_curr_l2_pos].value;
-                            adc_channels[ci][write_index].time_stamp = data_record[ext_adc_channel_raw_curr_l2_pos].time_stamp;
+
                         } else {
                             adc_channels[ci][write_index].value = -data_record[ext_adc_channel_raw_curr_l2_neg].value;
-                            adc_channels[ci][write_index].time_stamp = data_record[ext_adc_channel_raw_curr_l2_neg].time_stamp;
                         }
                     }
                     { //
                         const ext_adc_value_channel_t ci = ext_adc_value_curr_l3;
                         if (data_record[ext_adc_channel_raw_curr_l3_pos].value > data_record[ext_adc_channel_raw_curr_l3_neg].value) {
                             adc_channels[ci][write_index].value = data_record[ext_adc_channel_raw_curr_l3_pos].value;
-                            adc_channels[ci][write_index].time_stamp = data_record[ext_adc_channel_raw_curr_l3_pos].time_stamp;
+
                         } else {
                             adc_channels[ci][write_index].value = -data_record[ext_adc_channel_raw_curr_l3_neg].value;
-                            adc_channels[ci][write_index].time_stamp = data_record[ext_adc_channel_raw_curr_l3_neg].time_stamp;
                         }
                     }
 
                     {
                         adc_channels[ext_adc_value_volt_l21][write_index].value =
                             data_record[ext_adc_channel_raw_volt_l21].value - data_record[ext_adc_channel_raw_vref].value;
-                        adc_channels[ext_adc_value_volt_l21][write_index].time_stamp = data_record[ext_adc_channel_raw_volt_l21].time_stamp;
 
                         adc_channels[ext_adc_value_volt_l32][write_index].value =
                             data_record[ext_adc_channel_raw_volt_l23].value - data_record[ext_adc_channel_raw_vref].value;
-                        adc_channels[ext_adc_value_volt_l32][write_index].time_stamp = data_record[ext_adc_channel_raw_volt_l23].time_stamp;
 
                         adc_channels[ext_adc_value_volt_l13][write_index].value =
                             data_record[ext_adc_channel_raw_volt_l13].value - data_record[ext_adc_channel_raw_vref].value;
-                        adc_channels[ext_adc_value_volt_l13][write_index].time_stamp = data_record[ext_adc_channel_raw_volt_l13].time_stamp;
                     }
 
                     {
                         adc_channels[ext_adc_value_aux_volt][write_index].value = data_record[ext_adc_channel_raw_aux_volt].value;
-                        adc_channels[ext_adc_value_aux_volt][write_index].time_stamp = data_record[ext_adc_channel_raw_aux_volt].time_stamp;
                         adc_channels[ext_adc_value_temp_l1][write_index].value = data_record[ext_adc_channel_raw_temp_l1].value;
-                        adc_channels[ext_adc_value_temp_l1][write_index].time_stamp = data_record[ext_adc_channel_raw_temp_l1].time_stamp;
                         adc_channels[ext_adc_value_temp_l2][write_index].value = data_record[ext_adc_channel_raw_temp_l2].value;
-                        adc_channels[ext_adc_value_temp_l2][write_index].time_stamp = data_record[ext_adc_channel_raw_temp_l2].time_stamp;
                         adc_channels[ext_adc_value_temp_l3][write_index].value = data_record[ext_adc_channel_raw_temp_l3].value;
-                        adc_channels[ext_adc_value_temp_l3][write_index].time_stamp = data_record[ext_adc_channel_raw_temp_l3].time_stamp;
 
                         adc_channels[ext_adc_value_vref][write_index].value = data_record[ext_adc_channel_raw_vref].value;
-                        adc_channels[ext_adc_value_vref][write_index].time_stamp = data_record[ext_adc_channel_raw_vref].time_stamp;
                     }
-
+#if 1
                     for (int i = 0; i < ext_adc_value_COUNT; i++) {
                         adc_channels[i][write_index].value = apply_calibration(adc_channels[i][write_index].value, calibration_data, i);
                     }
+
+                    period_length_counter++;
+                    if (period_length_histeresis_rising == true) {
+                        if (adc_channels[ext_adc_value_volt_l21][write_index].value < -value_volt_l21_old_max_abs / 2) {
+                            period_length_histeresis_rising = false;
+                            period_length_avging += period_length_counter;
+                            period_length_counter = 0;
+                            period_avg_cycles_n++;
+                        }
+                    } else {
+                        if (adc_channels[ext_adc_value_volt_l21][write_index].value > value_volt_l21_old_max_abs / 2) {
+                            period_length_histeresis_rising = true;
+                        }
+                    }
+
                     int64_t p3 = adc_channels[ext_adc_value_volt_l32][write_index].value * adc_channels[ext_adc_value_curr_l3][write_index].value;
                     int64_t p2 = adc_channels[ext_adc_value_volt_l21][write_index].value * adc_channels[ext_adc_value_curr_l1][write_index].value;
                     power_avging += p3 + p2;
@@ -528,7 +665,6 @@ void taskExternalADC(void *pvParameters) {
 
                     effectiving_n++;
                     if (effective_calculation_period_start_ms + EFFECTIVE_CALCULATION_PERIOD_LENGTH_ms < xTaskGetTickCount()) {
-
                         assert(effectiving_n);
                         for (int i = 0; i < 3; i++) {
                             currents_effectiving[i] /= effectiving_n;
@@ -562,12 +698,17 @@ void taskExternalADC(void *pvParameters) {
                             }
                             currents_max_abs[i] = 0;
                         }
+                        value_volt_l21_old_max_abs = voltages_max_abs[u_l21];
+
                         for (int i = 0; i < u_COUNT; i++) {
                             if (voltages_max_abs[i] > power_voltages_max[i]) {
                                 power_voltages_max[i] = voltages_max_abs[i];
                             }
                             voltages_max_abs[i] = 0;
                         }
+                        period_length = period_length_avging / period_avg_cycles_n;
+                        period_length_avging = 0;
+                        period_avg_cycles_n = 0;
                         power_power = power_avging / effectiving_n;
                         power_avging = 0;
                         effectiving_test_possible_overflow = 0;
@@ -576,23 +717,36 @@ void taskExternalADC(void *pvParameters) {
                         effectiving_n = 0;
                     }
 
+#if 1
                     write_index++;
                     if (write_index >= ADC_RECORDS_TO_BUFFER) {
                         write_index = 0;
                         portENTER_CRITICAL();
-                        if (overwrite_channels_complete_allowed) {
-                            memcpy(adc_channels_complete, adc_channels, sizeof(adc_channels));
-                            overwrite_channels_complete_allowed = false;
+#if 1
+                        if (complete_records_chunk_write_index < COMPLETE_RECORDS_CHUNK_COUNT) {
+                            for (int j = 0; j < ext_adc_value_COUNT; j++) {
+                                for (int i = 0; i < ADC_RECORDS_TO_BUFFER; i++) {
+                                    adc_channels_complete[j][(complete_records_chunk_write_index * ADC_RECORDS_TO_BUFFER) + i] = adc_channels[j][i];
+                                }
+                            }
+                            //  memcpy(&adc_channels_complete[complete_records_chunk_write_index * ADC_RECORDS_TO_BUFFER], adc_channels,
+                            //        sizeof(adc_channels));
+                            complete_records_chunk_write_index++;
                         }
+#endif
                         portEXIT_CRITICAL();
                     }
+#endif
+#endif
                 }
+#endif
                 sample_time_stamp++;
             }
 
-            read_buffer_start_index += ADC_RECORDS_TO_BUFFER / 2;
-            if (read_buffer_start_index >= ADC_RECORDS_TO_BUFFER) {
+            read_buffer_start_index += RX_BUFFER_SIZE / 2;
+            if (read_buffer_start_index >= RX_BUFFER_SIZE) {
                 read_buffer_start_index = 0;
+                //       printf_pause++;
             }
             CLEAR_LED_YELLOW();
         }

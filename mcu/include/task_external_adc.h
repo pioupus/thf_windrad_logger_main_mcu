@@ -22,8 +22,6 @@
 #include "board.h"
 #include "storage_calibration.h"
 
-#define ADC_RECORDS_TO_BUFFER 128
-
 typedef struct {
     int16_t l1, l2, l3;
 } ext_adc_temperatures_t;
@@ -41,10 +39,14 @@ void extadc_get_currents_max(uint16_t max[i_COUNT]);
 
 void extadc_get_temperature_avg(uint16_t avg[3]);
 int32_t extadc_get_power();
+uint16_t extadc_sample_chunk_count();
+uint16_t extadc_get_frequency();
 
+void extadc_reset_sample_data_readpointer();
 void extadc_start_acquire_sample_data();
 bool extadc_is_sample_data_complete();
 void extadc_get_sample_data(int16_t samples[ADC_RECORDS_TO_BUFFER], const ext_adc_value_channel_t channel);
 
+void HAL_I2SEx_TxRxHalfCpltCallback_(I2S_HandleTypeDef *hi2s);
 void taskExternalADC(void *pvParameters);
 #endif /* MCU_INCLUDE_TASK_ADC_H_ */

@@ -181,7 +181,7 @@ void boardSetLED(led_id_t ledID, led_state_t ledState) {
             break;
 
         case lid_green:
-#if 1
+#if 0
             if (ledState == les_on) {
                 SET_LED_GREEN();
                 // SET_DISCO_LED_GREEN();

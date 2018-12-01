@@ -5,6 +5,7 @@
 
 #include "chip_init.h"
 #include "task_adc.h"
+#include "task_external_adc.h"
 
 /** @addtogroup Template_Project
  * @{
@@ -20,6 +21,8 @@
 /******************************************************************************/
 /*            Cortex-M4 Processor Exceptions Handlers                         */
 /******************************************************************************/
+
+bool DMA1_Stream2_IRQHandler_triggered = false;
 
 void prvGetRegistersFromStack(uint32_t *pulFaultStackAddress) {
     /* These are volatile to try and prevent the compiler/linker optimising them
@@ -133,7 +136,9 @@ void DMA1_Stream3_IRQHandler(void) {
 }
 
 void DMA1_Stream5_IRQHandler(void) {
+    // SET_LED_YELLOW();
     HAL_DMA_IRQHandler(hi2s3.hdmatx);
+    // CLEAR_LED_YELLOW();
 } /* DMA1 Stream 5                */
   /**
    * @brief  This function handles DMA Stream interrupt request.
@@ -141,7 +146,14 @@ void DMA1_Stream5_IRQHandler(void) {
    * @retval None
    */
 void DMA1_Stream2_IRQHandler(void) {
+    // SET_LED_GREEN();
+    // SET_LED_YELLOW();
+    DMA1_Stream2_IRQHandler_triggered = true;
     HAL_DMA_IRQHandler(hi2s3.hdmarx);
+    HAL_I2SEx_TxRxHalfCpltCallback_(&hi2s3);
+    DMA1_Stream2_IRQHandler_triggered = false;
+    // CLEAR_LED_GREEN();
+    // CLEAR_LED_YELLOW();
 }
 /**
  * @brief  This function handles SVCall exception.
