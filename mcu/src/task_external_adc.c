@@ -602,9 +602,10 @@ void taskExternalADC(void *pvParameters) {
                         }
                     }
 
+                    // https://de.wikipedia.org/wiki/Aronschaltung
                     int64_t p3 = adc_channels[ext_adc_value_volt_l32][write_index].value * adc_channels[ext_adc_value_curr_l3][write_index].value;
-                    int64_t p2 = adc_channels[ext_adc_value_volt_l21][write_index].value * adc_channels[ext_adc_value_curr_l1][write_index].value;
-                    power_avging += p3 + p2;
+                    int64_t p2 = -adc_channels[ext_adc_value_volt_l21][write_index].value * adc_channels[ext_adc_value_curr_l1][write_index].value;
+                    power_avging += (p3 + p2);
 
                     temperatures_avging[0] += adc_channels[ext_adc_value_temp_l1][write_index].value;
                     temperatures_avging[1] += adc_channels[ext_adc_value_temp_l2][write_index].value;
@@ -657,7 +658,7 @@ void taskExternalADC(void *pvParameters) {
                     voltages_effectiving[u_l32] +=
                         adc_channels[ext_adc_value_volt_l32][write_index].value * adc_channels[ext_adc_value_volt_l32][write_index].value;
                     voltages_effectiving[u_l13] +=
-                        adc_channels[ext_adc_value_volt_l13][write_index].value * adc_channels[ext_adc_value_volt_l13][write_index].value;
+                        9 adc_channels[ext_adc_value_volt_l13][write_index].value * adc_channels[ext_adc_value_volt_l13][write_index].value;
 
                     effectiving_test_possible_overflow += 4096 * 4096;
 
