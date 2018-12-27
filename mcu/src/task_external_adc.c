@@ -658,7 +658,7 @@ void taskExternalADC(void *pvParameters) {
                     voltages_effectiving[u_l32] +=
                         adc_channels[ext_adc_value_volt_l32][write_index].value * adc_channels[ext_adc_value_volt_l32][write_index].value;
                     voltages_effectiving[u_l13] +=
-                        9 adc_channels[ext_adc_value_volt_l13][write_index].value * adc_channels[ext_adc_value_volt_l13][write_index].value;
+                        adc_channels[ext_adc_value_volt_l13][write_index].value * adc_channels[ext_adc_value_volt_l13][write_index].value;
 
                     effectiving_test_possible_overflow += 4096 * 4096;
 

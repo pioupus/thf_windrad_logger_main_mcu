@@ -25,7 +25,7 @@ static TickType_t time_of_shutdown_command_s = 0;
 
 static void notify_raspy_to_shut_down(void) {
     time_of_shutdown_command_s = (xTaskGetTickCount() / portTICK_RATE_MS) / 1000;
-    SET_RASP_IRQ();
+    //  SET_RASP_IRQ();
 }
 
 static void notify_raspy_not_to_shut_down(void) {
