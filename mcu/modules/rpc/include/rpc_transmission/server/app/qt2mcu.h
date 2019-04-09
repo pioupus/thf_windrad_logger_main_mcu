@@ -78,7 +78,7 @@ typedef struct {
     int16_t voltage_aux;
 
     uint16_t frequency_Hz;
-    uint16_t power;
+    uint32_t power;
 
     uint16_t external_current_sensor;
     uint16_t supply_voltage;

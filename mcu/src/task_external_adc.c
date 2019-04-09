@@ -17,6 +17,7 @@
  */
 
 #include "task_external_adc.h"
+//#include "fake_sample_data.h"
 #include "main.h"
 #include "task.h"
 
@@ -603,8 +604,21 @@ void taskExternalADC(void *pvParameters) {
                     }
 
                     // https://de.wikipedia.org/wiki/Aronschaltung
+#if 1
                     int64_t p3 = adc_channels[ext_adc_value_volt_l32][write_index].value * adc_channels[ext_adc_value_curr_l3][write_index].value;
                     int64_t p2 = -adc_channels[ext_adc_value_volt_l21][write_index].value * adc_channels[ext_adc_value_curr_l1][write_index].value;
+#else
+
+                    static int16_t fake_read_index = 0;
+                    volatile int64_t p3 =
+                        adc_fake_channels[ext_adc_value_volt_l32][fake_read_index] * adc_fake_channels[ext_adc_value_curr_l3][fake_read_index];
+                    volatile int64_t p2 =
+                        -adc_fake_channels[ext_adc_value_volt_l21][fake_read_index] * adc_fake_channels[ext_adc_value_curr_l1][fake_read_index];
+                    fake_read_index++;
+                    if (fake_read_index > 4095) {
+                        fake_read_index = 0;
+                    }
+#endif
                     power_avging += (p3 + p2);
 
                     temperatures_avging[0] += adc_channels[ext_adc_value_temp_l1][write_index].value;
